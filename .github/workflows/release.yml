@@ -18,15 +18,14 @@ jobs:
           node-version: 20
 
       - name: Install deps
-        run: npm install --prefer-offline --no-audit --no-fund
+        run: npm install --prefer-offline --no-audit --no-fund --prefix .release
 
       - name: Build
         run: |
-          # Pega o nome do repositório para usar como nome do script
           REPO_NAME=$(echo ${{ github.repository }} | cut -d'/' -f2)
-          chmod +x scripts/build.sh && ./scripts/build.sh $REPO_NAME
+          bash scripts/build.sh $REPO_NAME
 
       - name: Release
-        run: npm run release
+        run: .release/node_modules/.bin/semantic-release --config .release/release.config.js
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

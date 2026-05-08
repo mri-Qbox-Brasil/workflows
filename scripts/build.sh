@@ -1,13 +1,12 @@
 #!/bin/bash
 set -e
 
-# Nome do script (folder name in .release)
 SCRIPT_NAME=${1:-"package"}
 
 echo "Iniciando build para: $SCRIPT_NAME"
 
-rm -rf .release
-mkdir -p ".release/$SCRIPT_NAME"
+rm -rf dist
+mkdir -p "dist/$SCRIPT_NAME"
 
 # Build web (se existir)
 if [ -d "web" ]; then
@@ -18,31 +17,31 @@ if [ -d "web" ]; then
   cd ..
 fi
 
-# Copia arquivos relevantes (exclui web inteira — output copiado separadamente)
+# Copia arquivos relevantes
 echo "Copiando arquivos..."
 rsync -av \
   --exclude=".git" \
   --exclude=".github" \
   --exclude=".gitignore" \
-  --exclude="scripts" \
-  --exclude="package.json" \
-  --exclude="package-lock.json" \
-  --exclude="release.config.js" \
-  --exclude="README.md" \
-  --exclude="node_modules" \
   --exclude=".release" \
+  --exclude="scripts" \
+  --exclude="README.md" \
+  --exclude="MANUAL.md" \
+  --exclude="CHANGELOG.md" \
+  --exclude="node_modules" \
+  --exclude="dist" \
   --exclude="web" \
-  . ".release/$SCRIPT_NAME"
+  . "dist/$SCRIPT_NAME"
 
 # Copia apenas o output do build web
 if [ -d "web/dist" ]; then
   echo "Copiando web/dist..."
-  cp -r web/dist ".release/$SCRIPT_NAME/web"
+  cp -r web/dist "dist/$SCRIPT_NAME/web"
 fi
 
 # Compacta
 echo "Compactando..."
-cd .release
+cd dist
 zip -r "$SCRIPT_NAME.zip" "$SCRIPT_NAME"
 
-echo "Build concluido: .release/$SCRIPT_NAME.zip"
+echo "Build concluido: dist/$SCRIPT_NAME.zip"

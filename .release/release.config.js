@@ -8,7 +8,7 @@ module.exports = {
         [
             '@semantic-release/exec',
             {
-                prepareCmd: 'node scripts/set-version.js'
+                prepareCmd: 'node .release/set-version.js'
             }
         ],
         '@semantic-release/changelog',
@@ -16,7 +16,7 @@ module.exports = {
             '@semantic-release/github',
             {
                 assets: [
-                    { path: `.release/${pkg.name}.zip`, label: 'Download' }
+                    { path: `dist/${pkg.name}.zip`, label: 'Download' }
                 ]
             }
         ]

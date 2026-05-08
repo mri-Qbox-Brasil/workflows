@@ -25,10 +25,10 @@ jobs:
           node-version: 20
 
       - name: Install deps
-        run: npm install --prefer-offline --no-audit --no-fund
+        run: npm install --prefer-offline --no-audit --no-fund --prefix .release
 
       - name: Generate docs
-        run: node scripts/generate-docs.js
+        run: node .release/generate-docs.js
         env:
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
           AI_BASE_URL: ${{ vars.AI_BASE_URL }}

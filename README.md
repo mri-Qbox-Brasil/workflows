@@ -52,8 +52,12 @@
 meu-script/
 ├── .github/
 │   ├── templates/               # Templates para geração de docs via IA
-│   └── workflows/
-│       └── release.yml          # GitHub Actions workflow
+│   └── workflows/               # GitHub Actions workflows
+├── .release/                    # Infraestrutura de release (oculto do yarn do FiveM)
+│   ├── package.json             # Dependências npm (semantic-release, openai)
+│   ├── release.config.js        # Configuração do semantic-release
+│   ├── set-version.js           # Injeta versão no fxmanifest.lua
+│   └── generate-docs.js         # Geração de docs via IA
 ├── client/                      # Código fonte Lua do lado do cliente
 │   └── main.lua
 ├── server/                      # Código fonte Lua do lado do servidor
@@ -71,13 +75,12 @@ meu-script/
 │   ├── vite.config.ts
 │   ├── tailwind.config.cjs
 │   └── package.json
-├── .release/                    # Pasta gerada pelo build (não versionar)
-│   └── meu-script/
+├── dist/                        # Saída do build (não versionar)
+│   └── meu-script.zip
 ├── scripts/
-│   └── build.sh                 # Script de build para produção
+│   ├── build.sh                 # Script de build para produção
+│   └── update-actions.sh        # Atualização automática de actions
 ├── fxmanifest.lua               # Manifesto do recurso FiveM
-├── package.json                 # Dependências npm (semantic-release)
-├── release.config.js            # Configuração do semantic-release
 ├── .gitignore
 └── README.md
 ```
@@ -86,12 +89,13 @@ meu-script/
 
 | Pasta | Propósito |
 |-------|-----------|
+| `.release/` | Configs de release — oculto para o yarn do FiveM não processar |
 | `client/` | Lógica do cliente (eventos, NUI callbacks) |
 | `server/` | Lógica do servidor (API, database, events) |
 | `shared/` | Código compartilhado (config, helpers) |
 | `web/src/` | Código-fonte da interface React (NUI) |
 | `web/build/` | Output do build do frontend (gerado automaticamente, não versionar) |
-| `.release/` | Saída do build final (zip pronto para produção) |
+| `dist/` | Saída do build final (zip pronto para produção) |
 | `scripts/` | Scripts de automação |
 
 ---
@@ -125,6 +129,9 @@ meu-script/
 | **@semantic-release/changelog** | ^6.0.0 | Geração de changelog |
 | **@semantic-release/github** | ^10.0.0 | Integração GitHub |
 | **@semantic-release/exec** | ^6.0.3 | Executar comandos customizados |
+| **openai** | ^4.0.0 | Cliente de API para geração de docs via IA |
+
+> Todas as dependências Node ficam em `.release/` — invisíveis para o yarn do FiveM.
 
 ---
 
@@ -148,10 +155,10 @@ cd mri_Qmeuscript
 ### 3. Instale as Dependências
 
 ```bash
-# Na raiz do projeto (ferramentas de release e automação)
-npm install
+# Ferramentas de release e automação
+npm install --prefix .release
 
-# Na pasta web (frontend React)
+# Frontend React
 cd web && npm install
 ```
 
@@ -201,10 +208,10 @@ Se preferir não usar o botão **Use this template**, é possível levar apenas 
 Arquivos a copiar:
 
 ```
-package.json
-release.config.js
+.release/package.json
+.release/release.config.js
+.release/set-version.js
 scripts/build.sh
-scripts/set-version.js
 .github/workflows/release.yml
 ```
 
@@ -231,14 +238,14 @@ Requisitos:
 Arquivos a copiar:
 
 ```
-scripts/generate-docs.js
+.release/generate-docs.js
 .github/templates/README.template.md
 .github/templates/MANUAL.template.md
 .github/workflows/generate-docs.yml
 ```
 
 Requisitos:
-- Adicione o pacote `openai` nas `devDependencies` do `package.json`: `"openai": "^4.0.0"`.
+- Adicione o pacote `openai` nas `devDependencies` do `.release/package.json`: `"openai": "^4.0.0"`.
 - Configure em **Settings → Secrets and variables → Actions**:
 
 | Tipo | Nome | Valor |
@@ -266,23 +273,22 @@ Requisitos:
 Para gerar o pacote final do recurso, use o script de build:
 
 ```bash
-bash scripts/build.sh mri_meuscript
+# Formato: ./scripts/build.sh [nome_do_script]
+./scripts/build.sh mri_meuscript
 ```
-
-O script detecta automaticamente a pasta `web/` e executa `npm run build` antes de empacotar o recurso.
 
 ### O que o build faz:
 
-1. ✅ Limpa a pasta `.release/`
+1. ✅ Limpa a pasta `dist/`
 2. ⚛️ Executa `npm run build` dentro de `web/` (gera `web/build/`)
 3. 📂 Copia arquivos relevantes (exclui `.git`, `node_modules`, `web/src`, etc.)
-4. 🗜️ Compacta em `.release/mri_meuscript.zip`
+4. 🗜️ Compacta em `dist/mri_meuscript.zip`
 5. 🚀 Pronto para upload no servidor!
 
 ### Saída do Build
 
 ```
-.release/
+dist/
 ├── mri_meuscript/
 │   ├── fxmanifest.lua
 │   ├── client/
@@ -303,7 +309,7 @@ O template inclui um pipeline de geração automática de `README.md` e `MANUAL.
 
 ### Como funciona
 
-Ao fazer push na `main` com alterações em arquivos `.lua`, `fxmanifest.lua`, `web/src/` ou nos templates, o workflow `.github/workflows/generate-docs.yml` executa `scripts/generate-docs.js`, que:
+Ao fazer push na `main` com alterações em arquivos `.lua`, `fxmanifest.lua`, `web/src/` ou nos templates, o workflow `.github/workflows/generate-docs.yml` executa `.release/generate-docs.js`, que:
 
 1. Coleta os arquivos-fonte do script (`fxmanifest.lua`, `client/`, `server/`, `shared/` e `web/src/`)
 2. Lê os templates em `.github/templates/`
@@ -351,7 +357,7 @@ O template inclui um workflow pré-configurado (`.github/workflows/release.yml`)
 | Ação | Descrição |
 |------|-----------|
 | ✅ Build do frontend | `npm run build` dentro de `web/` |
-| ✅ Build do recurso | Empacota tudo em `.release/` |
+| ✅ Build do recurso | Empacota tudo em `dist/` |
 | ✅ Versionamento semântico | Analisa os commits e determina a versão |
 | ✅ Geração de changelog | Atualiza `CHANGELOG.md` automaticamente |
 | ✅ Release no GitHub | Cria tag e release com o `.zip` anexado |
@@ -437,8 +443,7 @@ Config.NotifyType = 'ox'  -- 'ox' ou 'qb'
 
 | Comando | Descrição |
 |---------|-----------|
-| `npm run build` | Build completo (web + empacotamento) |
-| `npm run release` | Executa o semantic-release |
+| `./scripts/build.sh [nome]` | Build completo (web + empacotamento) |
 
 ### `web/`
 
