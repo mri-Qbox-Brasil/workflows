@@ -16,14 +16,15 @@
 - [Estrutura de Pastas](#-estrutura-de-pastas)
 - [Tecnologias](#-tecnologias)
 - [Começando](#-começando)
+- [Adicionando a um Repositório Existente](#-adicionando-a-um-repositório-existente)
 - [Configuração do fxmanifest.lua](#-configuração-do-fxmanifestlua)
 - [Build para Produção](#-build-para-produção)
 - [Geração de Documentação](#-geração-de-documentação)
 - [CI/CD e Automação](#-cicd-e-automação)
 - [Convenção de Commits](#-convenção-de-commits)
 - [Exemplos de Código](#-exemplos-de-código)
-- [GitHub Actions](#-github-actions)
 - [Scripts Disponíveis](#-scripts-disponíveis)
+- [Links Úteis](#-links-úteis)
 
 ---
 
@@ -122,7 +123,11 @@ cd mri_Qmeuscript
 npm install
 ```
 
-### 4. Configure o fxmanifest.lua
+### 4. Configure as permissões do GitHub Actions
+
+Acesse **Settings → Actions → General → Workflow permissions** e selecione **Read and write permissions**. Isso é necessário para o workflow de release criar tags, changelogs e releases automaticamente.
+
+### 5. Configure o fxmanifest.lua
 
 Edite `fxmanifest.lua`:
 
@@ -146,6 +151,75 @@ server_scripts {
     "server/*.lua"
 }
 ```
+
+---
+
+## 🔧 Adicionando a um Repositório Existente
+
+Se preferir não usar o botão **Use this template**, é possível levar apenas as partes que interessam para um repositório já existente. Abaixo estão os arquivos necessários para cada feature.
+
+### Release automático
+
+Arquivos a copiar:
+
+```
+package.json
+release.config.js
+scripts/build.sh
+scripts/set-version.js
+.github/workflows/release.yml
+```
+
+Requisitos:
+- O `fxmanifest.lua` deve ter `version "__VERSION__"` — o `set-version.js` substitui esse placeholder automaticamente durante o release.
+- Acesse **Settings → Actions → General → Workflow permissions** e ative **Read and write permissions**.
+
+### Atualização automática de GitHub Actions
+
+Arquivos a copiar:
+
+```
+scripts/update-actions.sh
+.github/workflows/update-actions.yml
+```
+
+Requisitos:
+- Crie um **Personal Access Token (PAT)** com o escopo `repo` em **GitHub → Settings → Developer settings → Personal access tokens**.
+- Adicione-o como secret `GH_TOKEN` no repositório (**Settings → Secrets and variables → Actions**).
+- Opcional: crie uma variable `PR_TEAM` com o nome do time do GitHub que deve ser assignado nos PRs gerados (ex: `merge`).
+
+### Geração de documentação via IA
+
+Arquivos a copiar:
+
+```
+scripts/generate-docs.js
+.github/templates/README.template.md
+.github/templates/MANUAL.template.md
+.github/workflows/generate-docs.yml
+```
+
+Requisitos:
+- Adicione o pacote `openai` nas `devDependencies` do `package.json`: `"openai": "^4.0.0"`.
+- Configure em **Settings → Secrets and variables → Actions**:
+
+| Tipo | Nome | Valor |
+|------|------|-------|
+| Secret | `AI_API_KEY` | Chave de API do provider |
+| Variable | `AI_BASE_URL` | URL base da API (vazio = OpenAI padrão) |
+| Variable | `AI_MODEL` | Modelo a usar (ex: `gpt-4o-mini`) |
+
+### Notificação de documentação para repo de docs
+
+Arquivos a copiar:
+
+```
+.github/workflows/repo-dispatch.yml
+```
+
+Requisitos:
+- Edite `FRIENDLY_NAME` no workflow com o nome do script como deve aparecer na sidebar da documentação.
+- O mesmo `GH_TOKEN` (PAT com escopo `repo`) é necessário para disparar eventos em outros repositórios.
 
 ---
 
