@@ -1,10 +1,13 @@
-# 🚀 FiveM Script Template (MRI Edition)
+# 🚀 FiveM Script Template — React Edition (MRI)
 
-> **Template oficial da MRI Qbox Team** para a criação de novos recursos de FiveM. Fornece uma estrutura sólida, organizada e pronta para um pipeline de CI/CD profissional.
+> **Template oficial da MRI Qbox Team** para scripts FiveM com interface NUI. Combina backend Lua com frontend React + Vite + TypeScript + Tailwind CSS, tudo integrado em um pipeline de CI/CD profissional.
 
 ![FiveM](https://img.shields.io/badge/FiveM-GTA%20V-green?style=flat-square)
 ![Lua](https://img.shields.io/badge/Lua-5.4-orange?style=flat-square)
-![ox_lib](https://img.shields.io/badge/ox_lib-Supported-blue?style=flat-square)
+![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square)
+![Vite](https://img.shields.io/badge/Vite-5-646CFF?style=flat-square)
+![Tailwind](https://img.shields.io/badge/Tailwind-3-38BDF8?style=flat-square)
 ![Semantic Release](https://img.shields.io/badge/Semantic%20Release-Automated-blueviolet?style=flat-square)
 ![MRI Qbox](https://img.shields.io/badge/MRI%20Qbox-Brasil-blue?style=flat-square)
 
@@ -33,11 +36,13 @@
 | Feature | Descrição |
 |---------|-------------|
 | 🎯 **Padrões MRI** | Configuração de `lua54`, suporte a `ox_lib`, estrutura organizada |
+| ⚛️ **React + NUI** | Interface NUI com React 18, TypeScript, Vite e Tailwind CSS |
+| 🔗 **Comunicação NUI** | Hooks `useNuiEvent` e `fetchNui` prontos para usar |
 | 🤖 **Automação Total** | Semantic Release, GitHub Actions, releases automáticas |
-| 📦 **Build Otimizado** | Script Bash para empacotamento pronto para produção |
+| 📦 **Build Otimizado** | Build do frontend integrado ao script Bash de empacotamento |
 | 🏷️ **Versionamento** | Versionamento semântico automático via commits |
 | 🧪 **Pronto para CI** | Lint, testes e deploy automáticos |
-| 📝 **Documentação** | README estruturado incluso |
+| 📝 **Documentação** | Geração automática de README e MANUAL via IA |
 
 ---
 
@@ -46,6 +51,7 @@
 ```
 meu-script/
 ├── .github/
+│   ├── templates/               # Templates para geração de docs via IA
 │   └── workflows/
 │       └── release.yml          # GitHub Actions workflow
 ├── client/                      # Código fonte Lua do lado do cliente
@@ -54,9 +60,19 @@ meu-script/
 │   └── main.lua
 ├── shared/                      # Código compartilhado (config, utils)
 │   └── config.lua
+├── web/                         # Interface NUI (React)
+│   ├── src/
+│   │   ├── context/
+│   │   │   └── NuiContext.tsx   # Contexto e hooks de comunicação NUI
+│   │   ├── App.tsx
+│   │   ├── main.tsx
+│   │   └── styles.css
+│   ├── index.html
+│   ├── vite.config.ts
+│   ├── tailwind.config.cjs
+│   └── package.json
 ├── .release/                    # Pasta gerada pelo build (não versionar)
 │   └── meu-script/
-│       └── (arquivos prontos)
 ├── scripts/
 │   └── build.sh                 # Script de build para produção
 ├── fxmanifest.lua               # Manifesto do recurso FiveM
@@ -68,13 +84,15 @@ meu-script/
 
 ### Descrição das Pastas
 
-| Pasta | Propósito | Exemplo de arquivo |
-|-------|-----------|-------------------|
-| `client/` | Lógica do cliente (UI, inputs, rendering) | `client/main.lua` |
-| `server/` | Lógica do servidor (API, database, events) | `server/main.lua` |
-| `shared/` | Código compartilhado (config, helpers) | `shared/config.lua` |
-| `.release/` | Saída do build (zip pronto para produção) | `.release/meu-script.zip` |
-| `scripts/` | Scripts de automação | `scripts/build.sh` |
+| Pasta | Propósito |
+|-------|-----------|
+| `client/` | Lógica do cliente (eventos, NUI callbacks) |
+| `server/` | Lógica do servidor (API, database, events) |
+| `shared/` | Código compartilhado (config, helpers) |
+| `web/src/` | Código-fonte da interface React (NUI) |
+| `web/build/` | Output do build do frontend (gerado automaticamente, não versionar) |
+| `.release/` | Saída do build final (zip pronto para produção) |
+| `scripts/` | Scripts de automação |
 
 ---
 
@@ -87,6 +105,17 @@ meu-script/
 | **FXVersion** | `cerulean` | Versão do FiveM |
 | **Lua** | `5.4` | Versão do Lua |
 | **ox_lib** | Latest | Framework de UI e utilitários |
+
+### Frontend (NUI)
+
+| Tecnologia | Versão | Descrição |
+|------------|--------|-------------|
+| **React** | ^18.2 | Biblioteca de interface |
+| **TypeScript** | ^5.1 | Tipagem estática |
+| **Vite** | ^5.0 | Bundler e dev server |
+| **Tailwind CSS** | ^3.3 | Estilização utilitária |
+| **lucide-react** | Latest | Ícones |
+| **clsx + tailwind-merge** | Latest | Utilitários de classes CSS |
 
 ### Node.js (Automação)
 
@@ -105,7 +134,7 @@ meu-script/
 
 Use o botão **"Use this template"** no GitHub:
 
-1. Acesse https://github.com/mri-Qbox-Brasil/template-fivem
+1. Acesse https://github.com/mri-Qbox-Brasil/template-fivem/tree/react
 2. Clique em **Use this template**
 3. Crie um novo repositório (ex: `mri_Qmeuscript`)
 
@@ -119,15 +148,27 @@ cd mri_Qmeuscript
 ### 3. Instale as Dependências
 
 ```bash
-# Na raiz do projeto (para ferramentas de release e automação)
+# Na raiz do projeto (ferramentas de release e automação)
 npm install
+
+# Na pasta web (frontend React)
+cd web && npm install
 ```
 
-### 4. Configure as permissões do GitHub Actions
+### 4. Inicie o servidor de desenvolvimento
+
+```bash
+cd web
+npm run dev
+```
+
+O Vite inicia em `http://localhost:5173`. Para testar a comunicação NUI, utilize `fetchNui` e `useNuiEvent` normalmente — fora do FiveM eles retornam dados mockados.
+
+### 5. Configure as permissões do GitHub Actions
 
 Acesse **Settings → Actions → General → Workflow permissions** e selecione **Read and write permissions**. Isso é necessário para o workflow de release criar tags, changelogs e releases automaticamente.
 
-### 5. Configure o fxmanifest.lua
+### 6. Configure o fxmanifest.lua
 
 Edite `fxmanifest.lua`:
 
@@ -141,15 +182,12 @@ author "MRI Qbox Team"
 description "Descrição do meu script"
 version "__VERSION__"  -- Será substituído automaticamente
 
--- Scripts de Cliente
-client_scripts {
-    "client/*.lua"
-}
+client_scripts { "client/*.lua" }
+server_scripts { "server/*.lua" }
 
--- Scripts de Servidor
-server_scripts {
-    "server/*.lua"
-}
+-- NUI
+ui_page "web/build/index.html"
+files { "web/build/**" }
 ```
 
 ---
@@ -228,27 +266,33 @@ Requisitos:
 Para gerar o pacote final do recurso, use o script de build:
 
 ```bash
-# Formato: ./scripts/build.sh [nome_do_script]
-./scripts/build.sh mri_meuscript
+bash scripts/build.sh mri_meuscript
 ```
+
+O script detecta automaticamente a pasta `web/` e executa `npm run build` antes de empacotar o recurso.
 
 ### O que o build faz:
 
 1. ✅ Limpa a pasta `.release/`
-2. 📂 Copia arquivos relevantes (exclui `.git`, `node_modules`, etc.)
-3. 🗜️ Compacta em `.release/mri_meuscript.zip`
-4. 🚀 Pronto para upload no servidor!
+2. ⚛️ Executa `npm run build` dentro de `web/` (gera `web/build/`)
+3. 📂 Copia arquivos relevantes (exclui `.git`, `node_modules`, `web/src`, etc.)
+4. 🗜️ Compacta em `.release/mri_meuscript.zip`
+5. 🚀 Pronto para upload no servidor!
 
 ### Saída do Build
 
 ```
 .release/
-├── mri_meuscript/           # Pasta organizada
+├── mri_meuscript/
 │   ├── fxmanifest.lua
 │   ├── client/
 │   ├── server/
-│   └── shared/
-└── mri_meuscript.zip        # Arquivo compactado pronto
+│   ├── shared/
+│   └── web/               # Apenas o output do build (sem src/)
+│       └── build/
+│           ├── index.html
+│           └── assets/
+└── mri_meuscript.zip
 ```
 
 ---
@@ -259,9 +303,9 @@ O template inclui um pipeline de geração automática de `README.md` e `MANUAL.
 
 ### Como funciona
 
-Ao fazer push na `main` com alterações em arquivos `.lua`, `fxmanifest.lua` ou nos templates, o workflow `.github/workflows/generate-docs.yml` executa `scripts/generate-docs.js`, que:
+Ao fazer push na `main` com alterações em arquivos `.lua`, `fxmanifest.lua`, `web/src/` ou nos templates, o workflow `.github/workflows/generate-docs.yml` executa `scripts/generate-docs.js`, que:
 
-1. Coleta os arquivos-fonte do script (`fxmanifest.lua`, `client/`, `server/`, `shared/` e, se existir, `web/src/`)
+1. Coleta os arquivos-fonte do script (`fxmanifest.lua`, `client/`, `server/`, `shared/` e `web/src/`)
 2. Lê os templates em `.github/templates/`
 3. Chama a API de IA para gerar os dois arquivos seguindo a estrutura dos templates
 4. Commita `README.md` e `MANUAL.md` de volta no repositório (apenas se houver mudança)
@@ -292,8 +336,6 @@ Edite os arquivos em `.github/templates/` para ajustar a estrutura e o estilo da
 - `README.template.md` — voltado para desenvolvedores (dependências, API, eventos, exports)
 - `MANUAL.template.md` — voltado para admins de servidor (instalação, configuração, comandos)
 
-A IA usa os templates como referência de estrutura e estilo, preenchendo o conteúdo com base no código-fonte real do script.
-
 ### Executar manualmente
 
 Na aba **Actions** do repositório, selecione **Generate Docs** e clique em **Run workflow**.
@@ -304,48 +346,15 @@ Na aba **Actions** do repositório, selecione **Generate Docs** e clique em **Ru
 
 ### GitHub Actions Workflow
 
-O template inclui um workflow pré-configurado (`.github/workflows/release.yml`):
+O template inclui um workflow pré-configurado (`.github/workflows/release.yml`) que ao fazer push na `main`:
 
-```yaml
-name: Release
-on:
-  push:
-    branches: [main]
-
-jobs:
-  release:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      
-      - name: Install deps
-        run: npm install
-      
-      - name: Build
-        run: |
-          REPO_NAME=$(echo ${{ github.repository }} | cut -d'/' -f2)
-          chmod +x scripts/build.sh && bash scripts/build.sh $REPO_NAME
-      
-      - name: Release
-        run: npm run release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-```
-
-### O que acontece automaticamente:
-
-| Gatilho | Ação |
-|---------|------|
-| Push na `main` | ✅ Build do recurso |
-| | ✅ Versionamento semântico |
-| | ✅ Geração de changelog |
-| | ✅ Criação de release no GitHub |
-| | ✅ Tag da versão |
+| Ação | Descrição |
+|------|-----------|
+| ✅ Build do frontend | `npm run build` dentro de `web/` |
+| ✅ Build do recurso | Empacota tudo em `.release/` |
+| ✅ Versionamento semântico | Analisa os commits e determina a versão |
+| ✅ Geração de changelog | Atualiza `CHANGELOG.md` automaticamente |
+| ✅ Release no GitHub | Cria tag e release com o `.zip` anexado |
 
 ---
 
@@ -365,60 +374,54 @@ Obrigatório para o funcionamento do **Semantic Release**:
 ### Exemplos:
 
 ```bash
-git commit -m "feat: adiciona sistema de inventário"
-git commit -m "fix: corrige erro no spawn de veículos"
-git commit -m "docs: atualiza README com novos exemplos"
-git commit -m "breaking change: altera API de exports"
+git commit -m "feat: adiciona tela de inventário"
+git commit -m "fix: corrige fechamento da NUI ao pressionar ESC"
+git commit -m "refactor: migra componentes para shadcn/ui"
+git commit -m "breaking change: altera estrutura de eventos NUI"
 ```
 
 ---
 
 ## 💻 Exemplos de Código
 
-### Exemplo: client/main.lua
+### Comunicação NUI — Lua → React
 
 ```lua
 -- client/main.lua
-local function showMyMenu()
-    lib.registerMenu({
-        id = 'my_menu',
-        title = 'Meu Script',
-        options = {
-            {
-                label = 'Opção 1',
-                description = 'Descrição da opção'
-            }
-        }
-    }, function(selected, scrollIndex, args)
-        print('Selecionado:', selected)
-    end)
-    lib.showMenu('my_menu')
-end
-
-RegisterCommand('meuscript', function()
-    showMyMenu()
+RegisterCommand('abrirmenu', function()
+    SetNuiFocus(true, true)
+    SendNUIMessage({ action = 'setVisible', data = true })
 end, false)
+
+RegisterNUICallback('fechar', function(data, cb)
+    SetNuiFocus(false, false)
+    SendNUIMessage({ action = 'setVisible', data = false })
+    cb('ok')
+end)
 ```
 
-### Exemplo: server/main.lua
+### Comunicação NUI — React → Lua
 
-```lua
--- server/main.lua
-local function doSomething(source, data)
-    print(('Jogador %s executou algo'):format(source))
-    -- Lógica do servidor
-end
+```tsx
+-- web/src/App.tsx
+import { useNuiEvent, fetchNui } from './context/NuiContext'
 
-lib.callback.register('meuscript:server:doSomething', function(source, data)
-    doSomething(source, data)
-    return true
-end)
+const App = () => {
+    useNuiEvent('setVisible', (visible: boolean) => {
+        setOpen(visible)
+    })
+
+    const handleFechar = async () => {
+        await fetchNui('fechar', {})
+    }
+
+    return <button onClick={handleFechar}>Fechar</button>
+}
 ```
 
 ### Exemplo: shared/config.lua
 
 ```lua
--- shared/config.lua
 Config = {}
 
 Config.Debug = false
@@ -430,25 +433,20 @@ Config.NotifyType = 'ox'  -- 'ox' ou 'qb'
 
 ## 📦 Scripts Disponíveis
 
-### `scripts/build.sh`
+### Raiz do projeto
 
-Script Bash para empacotamento parametrizado pronto para produção.
+| Comando | Descrição |
+|---------|-----------|
+| `npm run build` | Build completo (web + empacotamento) |
+| `npm run release` | Executa o semantic-release |
 
-**Uso:**
-```bash
-./scripts/build.sh [nome_do_script]
-```
+### `web/`
 
-**Exemplo:**
-```bash
-./scripts/build.sh mri_meuscript
-```
-
-**O que ele faz:**
-1. Remove pasta `.release/` antiga
-2. Cria nova pasta `.release/[nome_do_script]`
-3. Copia arquivos (excluindo lixo)
-4. Gera `.release/[nome_do_script].zip`
+| Comando | Descrição |
+|---------|-----------|
+| `npm run dev` | Servidor de desenvolvimento Vite |
+| `npm run build` | Build de produção para `web/build/` |
+| `npm run lint` | Lint com ESLint |
 
 ---
 
@@ -456,21 +454,12 @@ Script Bash para empacotamento parametrizado pronto para produção.
 
 - 📚 [Documentação Qbox](https://docs.qbox.re/)
 - 🛠️ [ox_lib](https://github.com/overextended/ox_lib)
+- ⚛️ [React](https://react.dev/)
+- ⚡ [Vite](https://vitejs.dev/)
+- 🎨 [Tailwind CSS](https://tailwindcss.com/)
 - 🤖 [Semantic Release](https://github.com/semantic-release/semantic-release)
 - 🐙 [MRI Qbox no GitHub](https://github.com/mri-Qbox-Brasil)
 - 💬 [Discord da MRI](https://discord.gg/uEfGD4mmVh)
-
----
-
-## 📊 Comparação: Antes vs Depois
-
-| Aspecto | Manual | Com Template |
-|---------|--------|---------------|
-| **Setup inicial** | ~30 min | ~2 min |
-| **Versionamento** | Manual | Automático |
-| **Build** | Manual | Automatizado |
-| **Releases** | Manual | Automáticas |
-| **Padronização** | Variável | Garantida |
 
 ---
 
