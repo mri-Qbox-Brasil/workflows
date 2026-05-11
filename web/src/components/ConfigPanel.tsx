@@ -9,6 +9,7 @@ import {
     MriSpinner,
 } from '@mriqbox/ui-kit'
 import { fetchNui } from '../context/NuiContext'
+import { useLocales } from '../hooks/useLocales'
 
 export interface PluginConfig {
     debug: boolean
@@ -20,6 +21,10 @@ const DEFAULTS: PluginConfig = {
     welcomeMessage: 'Hello, Plugin Test!',
 }
 
+interface Props {
+    locale?: string
+}
+
 /**
  * Aba "Configurações" do plugin. Carrega config persistida em
  * data/config.json via callback Lua, edita em draft, e persiste via save
@@ -27,10 +32,11 @@ const DEFAULTS: PluginConfig = {
  *
  * Para adicionar settings novos:
  *   1. Bump DEFAULTS aqui
- *   2. Bump DEFAULTS no server/config.lua e shared/config.lua
- *   3. Adicione o input correspondente
+ *   2. Bump DEFAULTS no server/config.lua
+ *   3. Adicione strings em locales/*.json (ui.config_*) e o input correspondente
  */
-export function ConfigPanel() {
+export function ConfigPanel({ locale }: Props) {
+    const { t } = useLocales(locale)
     const [config, setConfig] = useState<PluginConfig>(DEFAULTS)
     const [draft, setDraft] = useState<PluginConfig>(DEFAULTS)
     const [loading, setLoading] = useState(true)
@@ -83,14 +89,14 @@ export function ConfigPanel() {
 
     return (
         <div className="p-6 space-y-6">
-            <MriPageHeader title="Configurações" icon={Settings}>
+            <MriPageHeader title={t('ui.config_title')} icon={Settings}>
                 <MriButton variant="outline" onClick={handleReset} disabled={!dirty || saving}>
                     <RotateCcw className="w-4 h-4 mr-2" />
-                    Resetar
+                    {t('ui.config_reset')}
                 </MriButton>
                 <MriButton onClick={handleSave} disabled={!dirty || saving} isLoading={saving}>
                     <Save className="w-4 h-4 mr-2" />
-                    Salvar
+                    {t('ui.config_save')}
                 </MriButton>
             </MriPageHeader>
 
@@ -98,28 +104,28 @@ export function ConfigPanel() {
                 <MriCard className="p-4 space-y-2">
                     <div className="flex items-center justify-between gap-4">
                         <div>
-                            <p className="font-semibold text-sm">Modo debug</p>
+                            <p className="font-semibold text-sm">{t('ui.config_debug_label')}</p>
                             <p className="text-xs text-muted-foreground">
-                                Habilita logs de diagnostico no console F8.
+                                {t('ui.config_debug_hint')}
                             </p>
                         </div>
                         <MriSwitch
                             checked={draft.debug}
                             onCheckedChange={(v: boolean) => updateField('debug', v)}
-                            aria-label="Modo debug"
+                            aria-label={t('ui.config_debug_label')}
                         />
                     </div>
                 </MriCard>
 
                 <MriCard className="p-4 space-y-2">
-                    <p className="font-semibold text-sm mb-1">Mensagem de boas-vindas</p>
+                    <p className="font-semibold text-sm mb-1">{t('ui.config_welcome_label')}</p>
                     <p className="text-xs text-muted-foreground mb-2">
-                        Texto exibido na tela inicial do plugin.
+                        {t('ui.config_welcome_hint')}
                     </p>
                     <MriInput
                         value={draft.welcomeMessage}
                         onChange={(e) => updateField('welcomeMessage', e.target.value)}
-                        placeholder="Hello, Plugin Test!"
+                        placeholder={t('ui.welcome_default')}
                     />
                 </MriCard>
             </div>

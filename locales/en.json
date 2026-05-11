@@ -8,6 +8,19 @@
         "file_write_failed": "Failed to write %s"
     },
     "ui": {
-        "welcome_default": "Hello, Plugin Test!"
+        "nav_home": "Home",
+        "nav_config": "Settings",
+        "plugin_title": "Plugin Test",
+        "close": "Close (ESC)",
+        "loading": "Loading...",
+        "welcome_default": "Hello, Plugin Test!",
+        "welcome_subtitle": "This is the plugin template for mri_Qadmin. See {file} for contract docs (manifest, bridge, callbacks).",
+        "config_title": "Settings",
+        "config_reset": "Reset",
+        "config_save": "Save",
+        "config_debug_label": "Debug mode",
+        "config_debug_hint": "Enables diagnostic logs in the F8 console.",
+        "config_welcome_label": "Welcome message",
+        "config_welcome_hint": "Text shown on the plugin home screen."
     }
 }

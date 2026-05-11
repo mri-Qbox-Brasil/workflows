@@ -19,7 +19,16 @@ local function openUi()
     if isOpen then return end
     isOpen = true
     SetNuiFocus(true, true)
-    SendNUIMessage({ action = 'setVisible', data = { visible = true, config = getConfig() } })
+    -- Inclui `locale` no payload pra NUI saber qual JSON de locales fetchar.
+    -- Lido do `setr ox:locale` (default 'en' se nao definido).
+    SendNUIMessage({
+        action = 'setVisible',
+        data = {
+            visible = true,
+            config = getConfig(),
+            locale = GetConvar('ox:locale', 'en'),
+        },
+    })
 end
 
 local function closeUi()
