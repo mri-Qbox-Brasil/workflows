@@ -1,0 +1,13 @@
+{
+    "plugin": {
+        "register_failed": "Falha ao registrar plugin no mri_Qadmin: %s",
+        "config_save_failed": "Falha ao salvar config",
+        "no_permission": "Sem permissão",
+        "invalid_payload": "Payload inválido",
+        "runtime_config_updated": "Config atualizado em runtime: %s",
+        "file_write_failed": "Falha ao escrever %s"
+    },
+    "ui": {
+        "welcome_default": "Hello, Plugin Test!"
+    }
+}

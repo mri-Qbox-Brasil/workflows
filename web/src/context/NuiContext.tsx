@@ -27,22 +27,39 @@ export const useNuiEvent = <T = any>(action: string, handler: (data: T) => void)
   }, [action]);
 };
 
+// Detecta o nome do resource em runtime. Ordem de preferencia:
+// 1. `window.GetParentResourceName()` — injetado pelo CEF do FiveM no top frame.
+//    Nao garantido em iframes (eg quando o plugin roda embedded no Qadmin).
+// 2. Hostname `cfx-nui-{resource}` — parsado da URL atual. Funciona em iframe
+//    porque o iframe e servido pelo proprio resource (origem propria).
+// 3. Empty string — modo browser/dev. fetchNui retorna fallback sem chamar fetch.
+function detectResourceName(): string {
+  if (typeof window === 'undefined') return '';
+  const fn = (window as any).GetParentResourceName;
+  if (typeof fn === 'function') {
+    const name = fn();
+    if (typeof name === 'string' && name.length > 0) return name;
+  }
+  const match = window.location.host.match(/^cfx-nui-(.+)$/);
+  if (match) return match[1];
+  return '';
+}
+
 export const fetchNui = async <T = any>(eventName: string, data?: any): Promise<T> => {
-  const options = {
-    method: 'post',
-    headers: {
-      'Content-Type': 'application/json; charset=UTF-8',
-    },
-    body: JSON.stringify(data),
-  };
+  const resourceName = detectResourceName();
 
-  const resourceName = (window as any).GetParentResourceName ? (window as any).GetParentResourceName() : 'nui-frame-app';
+  // Browser/dev: sem resource → simula sucesso (callers ja tem .catch defensivo).
+  if (!resourceName) {
+    return undefined as unknown as T;
+  }
 
-  const resp = await fetch(`https://${resourceName}/${eventName}`, options);
+  const resp = await fetch(`https://${resourceName}/${eventName}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+    body: JSON.stringify(data ?? {}),
+  });
 
-  const respFormatted = await resp.json();
-
-  return respFormatted;
+  return resp.json();
 };
 
 // Basic Context for global NUI state

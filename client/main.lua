@@ -54,7 +54,7 @@ RegisterNetEvent('plugintest:client:configChanged', function(newConfig)
     if type(newConfig) ~= 'table' then return end
     clientConfig = newConfig
     if clientConfig.debug then
-        print('[plugintest] Config atualizado em runtime: ' .. json.encode(newConfig))
+        print('[plugintest] ' .. locale('plugin.runtime_config_updated', json.encode(newConfig)))
     end
 end)
 

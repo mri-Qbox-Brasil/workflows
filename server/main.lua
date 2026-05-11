@@ -47,6 +47,6 @@ CreateThread(function()
         })
     end)
     if not ok or result == false then
-        print(('[plugintest] Falha ao registrar plugin no mri_Qadmin: %s'):format(tostring(result)))
+        print('[plugintest] ' .. locale('plugin.register_failed', tostring(result)))
     end
 end)

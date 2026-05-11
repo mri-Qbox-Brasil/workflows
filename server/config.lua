@@ -46,7 +46,7 @@ local function saveToDisk()
         -1
     )
     if not ok then
-        print(('[%s] ERRO: falha ao escrever %s'):format(GetCurrentResourceName(), CONFIG_FILE))
+        print('[' .. GetCurrentResourceName() .. '] ' .. locale('plugin.file_write_failed', CONFIG_FILE))
     end
     return ok
 end
@@ -69,12 +69,12 @@ lib.callback.register('plugintest:server:getConfig', function()
 end)
 
 lib.callback.register('plugintest:server:saveConfig', function(source, payload)
-    if not isAdmin(source) then return false, 'sem permissão' end
-    if type(payload) ~= 'table' then return false, 'payload inválido' end
+    if not isAdmin(source) then return false, locale('plugin.no_permission') end
+    if type(payload) ~= 'table' then return false, locale('plugin.invalid_payload') end
 
     -- Merge defaults+payload pra garantir shape valido (ignora chaves extras).
     config = applyDefaults(payload)
-    if not saveToDisk() then return false, 'falha ao salvar' end
+    if not saveToDisk() then return false, locale('plugin.config_save_failed') end
 
     -- Broadcast pra todos os clients reaplicarem sem restart.
     TriggerClientEvent('plugintest:client:configChanged', -1, config)
