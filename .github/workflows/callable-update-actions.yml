@@ -4,8 +4,8 @@ on:
   workflow_call:
     inputs:
       node-version:
-        type: number
-        default: 20
+        type: string
+        default: '20'
       pr-team:
         type: string
         default: ''
