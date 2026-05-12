@@ -8,9 +8,15 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -20,12 +26,8 @@ jobs:
       - name: Install deps
         run: npm install --prefer-offline --no-audit --no-fund --prefix .release
 
-      - name: Build
-        run: |
-          REPO_NAME=$(echo ${{ github.repository }} | cut -d'/' -f2)
-          bash scripts/build.sh $REPO_NAME
-
       - name: Release
-        run: .release/node_modules/.bin/semantic-release --config .release/release.config.js
+        run: .release/node_modules/.bin/semantic-release --extends ./.release/release.config.cjs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_PATH: ${{ github.workspace }}/.release/node_modules

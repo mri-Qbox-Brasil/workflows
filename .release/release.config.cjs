@@ -3,14 +3,14 @@ module.exports = {
     plugins: [
         '@semantic-release/commit-analyzer',
         '@semantic-release/release-notes-generator',
+        '@semantic-release/changelog',
         ['@semantic-release/npm', { npmPublish: false, pkgRoot: '.release' }],
         [
             '@semantic-release/exec',
             {
-                prepareCmd: 'npm_package_version=${nextRelease.version} node .release/set-version.js'
+                prepareCmd: "sed -i 's/__VERSION__/${nextRelease.version}/g' fxmanifest.lua && REPO_NAME=$(echo $GITHUB_REPOSITORY | cut -d'/' -f2) && bash scripts/build.sh $REPO_NAME"
             }
         ],
-        '@semantic-release/changelog',
         [
             '@semantic-release/github',
             {
