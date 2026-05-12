@@ -5,10 +5,11 @@ module.exports = {
     plugins: [
         '@semantic-release/commit-analyzer',
         '@semantic-release/release-notes-generator',
+        ['@semantic-release/npm', { npmPublish: false, pkgRoot: '.release' }],
         [
             '@semantic-release/exec',
             {
-                prepareCmd: 'node .release/set-version.js'
+                prepareCmd: 'npm_package_version=${nextRelease.version} node .release/set-version.js'
             }
         ],
         '@semantic-release/changelog',
@@ -17,7 +18,8 @@ module.exports = {
             {
                 assets: [
                     { path: `dist/${pkg.name}.zip`, label: 'Download' }
-                ]
+                ],
+                labels: []
             }
         ]
     ]
