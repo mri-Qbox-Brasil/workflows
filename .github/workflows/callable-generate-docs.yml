@@ -12,6 +12,9 @@ on:
       ai-base-url:
         type: string
         default: ''
+      ai-chunks:
+        type: string
+        default: '4'
     secrets:
       GH_TOKEN:
         required: false
@@ -46,6 +49,7 @@ jobs:
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
           AI_BASE_URL: ${{ inputs.ai-base-url }}
           AI_MODEL: ${{ inputs.ai-model }}
+          AI_CHUNKS: ${{ inputs.ai-chunks }}
 
       - name: Commit if changed
         run: |
