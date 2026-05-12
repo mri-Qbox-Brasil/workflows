@@ -16,7 +16,7 @@ jobs:
           token: ${{ secrets.GH_TOKEN }}
 
       - name: Run update script
-        run: chmod +x scripts/update-actions.sh && ./scripts/update-actions.sh
+        run: chmod +x .release/update-actions.sh && ./.release/update-actions.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           PR_TEAM: ${{ vars.PR_TEAM }}
