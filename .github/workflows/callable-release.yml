@@ -1,0 +1,52 @@
+name: Callable — Release
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        type: number
+        default: 20
+    secrets:
+      GH_TOKEN:
+        required: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@mri-qbox-brasil'
+
+      - name: Install fivem-scripts e semantic-release
+        run: |
+          npm install --no-save \
+            @mri-qbox-brasil/fivem-scripts \
+            semantic-release \
+            @semantic-release/changelog \
+            @semantic-release/commit-analyzer \
+            @semantic-release/release-notes-generator \
+            @semantic-release/exec \
+            @semantic-release/github \
+            @semantic-release/npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Release
+        run: npx semantic-release --extends node_modules/@mri-qbox-brasil/fivem-scripts/release.config.callable.cjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GH_TOKEN }}

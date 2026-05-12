@@ -1,19 +1,35 @@
 {
-    "name": "fivem-script-template",
+    "name": "@mri-qbox-brasil/fivem-scripts",
     "version": "0.0.0-development",
-    "private": true,
+    "description": "Scripts de build, release e docs para recursos FiveM da MRI Qbox Brasil",
+    "bin": {
+        "fivem-scripts": "./bin/cli.js"
+    },
+    "files": [
+        "bin/",
+        "generate-docs.js",
+        "set-version.js",
+        "build.sh",
+        "update-actions.sh",
+        "release.config.callable.cjs"
+    ],
+    "publishConfig": {
+        "registry": "https://npm.pkg.github.com",
+        "access": "restricted"
+    },
     "scripts": {
-        "build": "bash scripts/build.sh",
-        "test": "echo 'no tests'",
-        "release": "semantic-release"
+        "test": "echo 'no tests'"
+    },
+    "dependencies": {
+        "openai": "^4.0.0"
     },
     "devDependencies": {
-        "openai": "^4.0.0",
-        "semantic-release": "^23.0.0",
         "@semantic-release/changelog": "^6.0.0",
+        "@semantic-release/commit-analyzer": "^11.0.0",
         "@semantic-release/exec": "^6.0.3",
         "@semantic-release/github": "^10.0.0",
-        "@semantic-release/commit-analyzer": "^11.0.0",
-        "@semantic-release/release-notes-generator": "^12.0.0"
+        "@semantic-release/npm": "^12.0.0",
+        "@semantic-release/release-notes-generator": "^12.0.0",
+        "semantic-release": "^23.0.0"
     }
 }

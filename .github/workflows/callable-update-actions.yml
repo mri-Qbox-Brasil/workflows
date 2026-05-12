@@ -1,0 +1,41 @@
+name: Callable — Update Actions Versions
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        type: number
+        default: 20
+      pr-team:
+        type: string
+        default: ''
+    secrets:
+      GH_TOKEN:
+        required: true
+
+jobs:
+  update-actions:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@mri-qbox-brasil'
+
+      - name: Install fivem-scripts
+        run: npm install --no-save @mri-qbox-brasil/fivem-scripts
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Run update
+        run: npx fivem-scripts update-actions
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          PR_TEAM: ${{ inputs.pr-team }}
