@@ -10,6 +10,7 @@ const client = new OpenAI({
 });
 
 const MODEL = process.env.AI_MODEL || 'gpt-4o-mini';
+const CHUNKS = Math.max(1, parseInt(process.env.AI_CHUNKS || '4', 10));
 
 function readIfExists(filePath) {
     return fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : null;
@@ -37,7 +38,6 @@ function collectSources() {
         ...luaFilesIn('shared'),
         ...tsFilesIn('web/src'),
     ];
-
     return Object.fromEntries(
         candidates
             .map(f => [f, readIfExists(f)])
@@ -52,35 +52,56 @@ function langFor(filePath) {
     return 'lua';
 }
 
-function buildSourceBlock(sources) {
-    return Object.entries(sources)
+function buildBlock(entries) {
+    return entries
         .map(([name, content]) => `### ${name}\n\`\`\`${langFor(name)}\n${content}\n\`\`\``)
         .join('\n\n');
 }
 
-async function generate(template, sourceBlock) {
-    const response = await client.chat.completions.create({
+function splitIntoChunks(entries, n) {
+    const size = Math.ceil(entries.length / n);
+    const chunks = [];
+    for (let i = 0; i < entries.length; i += size) {
+        chunks.push(entries.slice(i, i + size));
+    }
+    return chunks;
+}
+
+async function extract(block, index, total) {
+    console.log(`  Chunk ${index + 1}/${total}...`);
+    const { choices } = await client.chat.completions.create({
+        model: MODEL,
+        temperature: 0,
+        messages: [
+            {
+                role: 'system',
+                content: 'You are a code analyst for FiveM resources. Extract technical information from source code concisely and accurately. Return markdown.',
+            },
+            {
+                role: 'user',
+                content: `Extract from this source code (part ${index + 1} of ${total}):\n- Resource name and description\n- Dependencies\n- Commands (name, permission, description)\n- Exports (name, parameters, description)\n- Key events triggered or listened to\n- Configuration options\n- Main features and functionality\n\nSource:\n\n${block}`,
+            },
+        ],
+    });
+    return choices[0].message.content.trim();
+}
+
+async function generate(template, summary) {
+    const { choices } = await client.chat.completions.create({
         model: MODEL,
         temperature: 0.2,
         messages: [
             {
                 role: 'system',
-                content: [
-                    'You are a technical writer for FiveM Lua scripts.',
-                    'Generate documentation in Brazilian Portuguese.',
-                    'Follow the exact structure and style of the provided template.',
-                    'Replace all placeholder content with accurate information extracted from the source code.',
-                    'Return only the final markdown content — no explanations, no surrounding code fences.',
-                ].join(' '),
+                content: 'You are a technical writer for FiveM scripts. Generate documentation in Brazilian Portuguese. Follow the exact structure and style of the provided template. Use only information from the technical summary. Return only the final markdown — no explanations, no surrounding code fences.',
             },
             {
                 role: 'user',
-                content: `Template (replicate this structure exactly):\n\n${template}\n\n---\n\nSource code:\n\n${sourceBlock}`,
+                content: `Template:\n\n${template}\n\n---\n\nTechnical summary extracted from source code:\n\n${summary}`,
             },
         ],
     });
-
-    return response.choices[0].message.content.trim();
+    return choices[0].message.content.trim();
 }
 
 async function main() {
@@ -93,24 +114,32 @@ async function main() {
     }
 
     const sources = collectSources();
+    const entries = Object.entries(sources);
 
-    if (Object.keys(sources).length === 0) {
+    if (entries.length === 0) {
         console.error('No source files found (client/, server/, shared/, fxmanifest.lua).');
         process.exit(1);
     }
 
     console.log(`Provider : ${process.env.AI_BASE_URL || 'OpenAI default'}`);
     console.log(`Model    : ${MODEL}`);
+    console.log(`Chunks   : ${CHUNKS}`);
     console.log(`Sources  : ${Object.keys(sources).join(', ')}`);
 
-    const sourceBlock = buildSourceBlock(sources);
+    console.log('\nExtracting from source chunks...');
+    const chunks = splitIntoChunks(entries, CHUNKS);
+    const summaries = [];
+    for (let i = 0; i < chunks.length; i++) {
+        summaries.push(await extract(buildBlock(chunks[i]), i, chunks.length));
+    }
+    const summary = summaries.join('\n\n---\n\n');
 
-    console.log('Generating README.md...');
-    const readme = await generate(readmeTemplate, sourceBlock);
+    console.log('\nGenerating README.md...');
+    const readme = await generate(readmeTemplate, summary);
     fs.writeFileSync('README.md', readme + '\n');
 
     console.log('Generating MANUAL.md...');
-    const manual = await generate(manualTemplate, sourceBlock);
+    const manual = await generate(manualTemplate, summary);
     fs.writeFileSync('MANUAL.md', manual + '\n');
 
     console.log('Done.');
