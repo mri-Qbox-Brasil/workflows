@@ -114,21 +114,31 @@ async function extract(block, index, total) {
     ], 0);
 }
 
+function sanitize(text) {
+    if (!text) return null;
+    const idx = text.indexOf('#');
+    return idx > 0 ? text.slice(idx) : text;
+}
+
 async function generate(template, summary) {
-    return call([
-        { role: 'system', content: 'You are a technical writer for FiveM scripts. Generate documentation in Brazilian Portuguese. Follow the exact structure and style of the provided template. Use only information from the technical summary. Return only the final markdown — no explanations, no surrounding code fences.' },
-        { role: 'user',   content: `Template:\n\n${template}\n\n---\n\nTechnical summary extracted from source code:\n\n${summary}` },
-    ], 0.2);
+    const result = await call([
+        { role: 'system', content: 'You are a markdown document generator. Output only the completed document — no preamble, no notes, no checklists, no surrounding fences. Your entire response is the document itself.' },
+        { role: 'user',   content: `Fill in the markdown template below using the technical information provided. Write all content in Brazilian Portuguese. Replace every placeholder with real content from the technical information. Your response must start directly with the "#" heading and contain nothing else.\n\nIMPORTANT: If a section has no real content to show (no commands, no exports, no events, no modules, etc.), remove that entire section and its heading from the output — do not write placeholder rows, "none" messages, or empty tables.\n\nTemplate:\n\n${template}\n\n---\n\nTechnical information:\n\n${summary}` },
+    ], 0);
+    return sanitize(result);
 }
 
 // --- main --------------------------------------------------------------
 
 async function main() {
-    const readmeTemplate = readIfExists('.github/templates/README.template.md');
-    const manualTemplate = readIfExists('.github/templates/MANUAL.template.md');
+    const bundled = path.join(__dirname, 'templates');
+    const readmeTemplate = readIfExists('.github/templates/README.template.md')
+        || readIfExists(path.join(bundled, 'README.template.md'));
+    const manualTemplate = readIfExists('.github/templates/MANUAL.template.md')
+        || readIfExists(path.join(bundled, 'MANUAL.template.md'));
 
     if (!readmeTemplate || !manualTemplate) {
-        console.error('Templates not found in .github/templates/');
+        console.error('Templates not found in .github/templates/ or bundled defaults.');
         process.exit(1);
     }
 
@@ -159,10 +169,14 @@ async function main() {
     const summary = summaries.join('\n\n---\n\n');
 
     console.log('\nGenerating README.md...');
-    fs.writeFileSync('README.md', await generate(readmeTemplate, summary) + '\n');
+    const readme = await generate(readmeTemplate, summary);
+    if (!readme) { console.error('README generation failed — aborting.'); process.exit(1); }
+    fs.writeFileSync('README.md', readme + '\n');
 
     console.log('Generating MANUAL.md...');
-    fs.writeFileSync('MANUAL.md', await generate(manualTemplate, summary) + '\n');
+    const manual = await generate(manualTemplate, summary);
+    if (!manual) { console.error('MANUAL generation failed — aborting.'); process.exit(1); }
+    fs.writeFileSync('MANUAL.md', manual + '\n');
 
     console.log('Done.');
 }
