@@ -6,6 +6,9 @@ on:
       node-version:
         type: string
         default: '20'
+      ai-provider:
+        type: string
+        default: ''
       ai-model:
         type: string
         default: ''
@@ -47,6 +50,7 @@ jobs:
         run: npx fivem-scripts generate-docs
         env:
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          AI_PROVIDER: ${{ inputs.ai-provider }}
           AI_BASE_URL: ${{ inputs.ai-base-url }}
           AI_MODEL: ${{ inputs.ai-model }}
           AI_CHUNKS: ${{ inputs.ai-chunks }}
