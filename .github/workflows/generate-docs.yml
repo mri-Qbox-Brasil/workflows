@@ -31,8 +31,10 @@ jobs:
         run: node .release/generate-docs.js
         env:
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          AI_PROVIDER: ${{ vars.AI_PROVIDER }}
           AI_BASE_URL: ${{ vars.AI_BASE_URL }}
           AI_MODEL: ${{ vars.AI_MODEL }}
+          AI_CHUNKS: ${{ vars.AI_CHUNKS }}
 
       - name: Commit if changed
         run: |
