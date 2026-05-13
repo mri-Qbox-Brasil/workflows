@@ -40,7 +40,7 @@ async function callGemini(messages, temperature) {
     return data.candidates[0].content.parts[0].text.trim();
 }
 
-const RETRIES = 3;
+const RETRIES = 5;
 
 async function callWithRetry(fn, messages, temperature) {
     for (let attempt = 1; attempt <= RETRIES; attempt++) {
@@ -48,10 +48,13 @@ async function callWithRetry(fn, messages, temperature) {
             return await fn(messages, temperature);
         } catch (err) {
             const isLast = attempt === RETRIES;
-            const label  = isLast ? 'giving up.' : `retrying in ${attempt * 5}s...`;
+            const retryInfo = err.body?.error?.details?.find(d => d['@type']?.endsWith('RetryInfo'));
+            const suggested = retryInfo?.retryDelay ? parseInt(retryInfo.retryDelay) * 1000 : null;
+            const delay = suggested ?? (attempt * 10000);
+            const label = isLast ? 'giving up.' : `retrying in ${delay / 1000}s...`;
             console.warn(`  Attempt ${attempt}/${RETRIES} failed (${err.status || err.message}), ${label}`);
             if (isLast) return null;
-            await new Promise(r => setTimeout(r, attempt * 5000));
+            await new Promise(r => setTimeout(r, delay));
         }
     }
 }
