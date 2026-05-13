@@ -43,18 +43,17 @@ async function callGemini(messages, temperature) {
 const RETRIES = 3;
 
 async function callWithRetry(fn, messages, temperature) {
-    let lastErr;
     for (let attempt = 1; attempt <= RETRIES; attempt++) {
         try {
             return await fn(messages, temperature);
         } catch (err) {
-            lastErr = err;
-            const delay = attempt * 5000;
-            console.warn(`  Attempt ${attempt}/${RETRIES} failed (${err.status || err.message}), retrying in ${delay / 1000}s...`);
-            await new Promise(r => setTimeout(r, delay));
+            const isLast = attempt === RETRIES;
+            const label  = isLast ? 'giving up.' : `retrying in ${attempt * 5}s...`;
+            console.warn(`  Attempt ${attempt}/${RETRIES} failed (${err.status || err.message}), ${label}`);
+            if (isLast) return null;
+            await new Promise(r => setTimeout(r, attempt * 5000));
         }
     }
-    throw lastErr;
 }
 
 const baseCall = NATIVE ? callGemini : callOpenAI;
@@ -150,7 +149,12 @@ async function main() {
     const chunks = splitIntoChunks(entries, CHUNKS);
     const summaries = [];
     for (let i = 0; i < chunks.length; i++) {
-        summaries.push(await extract(buildBlock(chunks[i]), i, chunks.length));
+        const result = await extract(buildBlock(chunks[i]), i, chunks.length);
+        if (result) summaries.push(result);
+    }
+    if (summaries.length === 0) {
+        console.error('All chunks failed — aborting.');
+        process.exit(1);
     }
     const summary = summaries.join('\n\n---\n\n');
 
