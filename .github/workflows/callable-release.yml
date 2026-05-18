@@ -40,8 +40,7 @@ jobs:
             @semantic-release/commit-analyzer \
             @semantic-release/release-notes-generator \
             @semantic-release/exec \
-            @semantic-release/github \
-            @semantic-release/npm
+            @semantic-release/github
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GH_TOKEN }}
 
@@ -54,7 +53,6 @@ jobs:
               '@semantic-release/commit-analyzer',
               '@semantic-release/release-notes-generator',
               '@semantic-release/changelog',
-              ['@semantic-release/npm', { npmPublish: false }],
               ['@semantic-release/exec', {
                 prepareCmd: "REPO_NAME=$(echo $GITHUB_REPOSITORY | cut -d'/' -f2) && npx fivem-scripts build $REPO_NAME"
               }],
