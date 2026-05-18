@@ -1,27 +1,35 @@
 #!/usr/bin/env node
-'use strict';
+'use strict'
 
-const { spawnSync } = require('child_process');
-const path = require('path');
+const { execFileSync } = require('child_process')
+const path = require('path')
 
-const [, , command, ...args] = process.argv;
-const ROOT = path.join(__dirname, '..');
+const [, , command, ...args] = process.argv
+
+const pkgRoot = path.resolve(__dirname, '..')
 
 const commands = {
-    'build':          { cmd: 'bash', script: 'build.sh' },
-    'generate-docs':  { cmd: 'node', script: 'generate-docs.js' },
-    'set-version':    { cmd: 'node', script: 'set-version.js' },
-    'update-actions': { cmd: 'bash', script: 'update-actions.sh' },
-};
-
-const def = commands[command];
-
-if (!def) {
-    const names = Object.keys(commands).join(', ');
-    console.error(`Usage: fivem-scripts <command> [args]`);
-    console.error(`Commands: ${names}`);
-    process.exit(1);
+    build: 'build.sh',
+    'update-actions': 'update-actions.sh',
+    'generate-docs': 'generate-docs.js',
+    'set-version': 'set-version.js',
 }
 
-const { status } = spawnSync(def.cmd, [path.join(ROOT, def.script), ...args], { stdio: 'inherit' });
-process.exit(status ?? 0);
+if (!command || !commands[command]) {
+    console.error(`Usage: fivem-scripts <${Object.keys(commands).join('|')}> [args...]`)
+    process.exit(1)
+}
+
+const target = commands[command]
+const isJs = target.endsWith('.js')
+const targetPath = path.join(pkgRoot, target)
+
+try {
+    if (isJs) {
+        execFileSync(process.execPath, [targetPath, ...args], { stdio: 'inherit' })
+    } else {
+        execFileSync('bash', [targetPath, ...args], { stdio: 'inherit' })
+    }
+} catch (err) {
+    process.exit(err.status ?? 1)
+}
