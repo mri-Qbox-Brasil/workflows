@@ -12,8 +12,16 @@ mkdir -p "dist/$SCRIPT_NAME"
 if [ -d "web" ]; then
   echo "Building web..."
   cd web
-  npm install --prefer-offline --no-audit --no-fund
-  npm run build
+  if [ -f "pnpm-lock.yaml" ]; then
+    if ! command -v pnpm &> /dev/null; then
+      npm install -g pnpm@9
+    fi
+    pnpm install --prefer-offline --no-audit --no-fund
+    pnpm run build
+  else
+    npm install --prefer-offline --no-audit --no-fund
+    npm run build
+  fi
   cd ..
 fi
 
@@ -34,9 +42,10 @@ rsync -av \
   . "dist/$SCRIPT_NAME"
 
 # Copia apenas o output do build web
-if [ -d "web/dist" ]; then
-  echo "Copiando web/dist..."
-  cp -r web/dist "dist/$SCRIPT_NAME/web"
+if [ -d "web/build" ]; then
+  echo "Copiando web/build..."
+  mkdir -p "dist/$SCRIPT_NAME/web"
+  cp -r web/build "dist/$SCRIPT_NAME/web/build"
 fi
 
 # Compacta
