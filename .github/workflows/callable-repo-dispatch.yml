@@ -6,6 +6,9 @@ on:
       friendly-name:
         type: string
         required: true
+      doc-file:
+        type: string
+        default: 'MANUAL.md'
       docs-repository:
         type: string
         default: 'mri-Qbox-Brasil/docs-mriqbox'
@@ -23,4 +26,4 @@ jobs:
           token: ${{ secrets.GH_TOKEN }}
           repository: ${{ inputs.docs-repository }}
           event-type: update-manual
-          client-payload: '{"org": "${{ github.repository_owner }}", "repo": "${{ github.event.repository.name }}", "name": "${{ inputs.friendly-name }}"}'
+          client-payload: '{"org": "${{ github.repository_owner }}", "repo": "${{ github.event.repository.name }}", "name": "${{ inputs.friendly-name }}", "doc_file": "${{ inputs.doc-file }}"}'
