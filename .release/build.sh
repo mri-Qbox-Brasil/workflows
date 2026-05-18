@@ -16,7 +16,7 @@ if [ -d "web" ]; then
     if ! command -v pnpm &> /dev/null; then
       npm install -g pnpm@9
     fi
-    pnpm install --prefer-offline --no-audit --no-fund
+    pnpm install --prefer-offline
     pnpm run build
   else
     npm install --prefer-offline --no-audit --no-fund
