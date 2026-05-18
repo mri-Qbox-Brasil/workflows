@@ -12,6 +12,10 @@ on:
       web-dir:
         type: string
         default: 'web'
+      web-lint:
+        description: 'Habilita ESLint (desabilitar em repos Lua-only)'
+        type: boolean
+        default: true
       lua-lint:
         description: 'Habilita luacheck (requer .luacheckrc no repo)'
         type: boolean
@@ -20,6 +24,7 @@ on:
 jobs:
   lint-web:
     name: Lint Web (ESLint)
+    if: ${{ inputs.web-lint }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
