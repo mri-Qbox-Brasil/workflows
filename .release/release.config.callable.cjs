@@ -8,7 +8,7 @@ module.exports = {
         [
             '@semantic-release/exec',
             {
-                prepareCmd: "REPO_NAME=$(echo $GITHUB_REPOSITORY | cut -d'/' -f2) && npx fivem-scripts build $REPO_NAME"
+                prepareCmd: "REPO_NAME=$(echo $GITHUB_REPOSITORY | cut -d'/' -f2) && npx fivem-scripts set-version ${nextRelease.version} && npx fivem-scripts build $REPO_NAME"
             }
         ],
         [
