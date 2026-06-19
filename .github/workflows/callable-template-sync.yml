@@ -13,6 +13,9 @@ on:
         type: string
         default: 'main'
     secrets:
+      # PAT com escopo `workflow` (classic) ou fine-grained com
+      # "Workflows: Read and write". O GITHUB_TOKEN padrão NÃO serve: o GitHub
+      # proíbe App tokens de criar/alterar arquivos em .github/workflows/.
       GH_TOKEN:
         required: false
 
@@ -26,22 +29,18 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.destination-branch }}
+          fetch-depth: 0
           token: ${{ secrets.GH_TOKEN || github.token }}
 
+      # Abre um PR com as mudanças do template (não força push na branch).
+      # Respeita o .templatesyncignore do repo de destino (raiz ou .github/).
       - name: Sync template
-        uses: repo-sync/github-sync@v2
+        uses: AndreasAugustin/actions-template-sync@v2
         with:
-          source_repo: ${{ inputs.source-repo }}
-          source_branch: ${{ inputs.source-branch }}
-          destination_branch: ${{ inputs.destination-branch }}
+          source_repo_path: ${{ inputs.source-repo }}
+          upstream_branch: ${{ inputs.source-branch }}
           github_token: ${{ secrets.GH_TOKEN || github.token }}
-          create_pr: true
           pr_title: "chore(template): sync with template"
+          pr_labels: "template-sync"
           pr_body: "Atualização automática do template base"
-          pr_label: "template-sync"
-          exclude: |
-            config/*
-            *.local.lua
-            .env
-            .env.*
-            .github/workflows/template-sync.yml
