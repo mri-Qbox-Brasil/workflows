@@ -9,6 +9,10 @@ on:
     secrets:
       GH_TOKEN:
         required: true
+      # PAT (conta pessoal) com escopo `models` para o GitHub Models. Sem ele,
+      # cai no GITHUB_TOKEN (que dá 403 em org free) e usa as notas cruas.
+      GH_MODELS_TOKEN:
+        required: false
       # Webhook do canal de updates do Discord. Sem ela, o notificador apenas
       # pula — a release continua normalmente.
       UPDATE_DISCORD_WEBHOOK:
@@ -223,9 +227,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.GH_TOKEN }}
-          # Token dedicado para o GitHub Models (usa o GITHUB_TOKEN padrão do job,
-          # que carrega a permissão models:read declarada acima).
-          GH_MODELS_TOKEN: ${{ github.token }}
+          # Token para o GitHub Models: prefere o PAT (conta pessoal com Models);
+          # se ausente, usa o GITHUB_TOKEN (funciona só onde Models está habilitado).
+          GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN || github.token }}
           LLM_MODEL: ${{ vars.LLM_MODEL }}
           # Notificação de release no Discord (todas opcionais).
           # Kill switch por repo: var DISCORD_RELEASE_NOTIFY=false desliga.
