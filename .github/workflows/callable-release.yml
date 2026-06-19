@@ -85,6 +85,10 @@ jobs:
 
           const version = (process.argv[2] || '').replace(/^v/, '');
 
+          // Kill switch por repo: defina a variável DISCORD_RELEASE_NOTIFY=false
+          // (Settings → Variables) para desligar a notificação. Ligado por padrão.
+          const notify = env('DISCORD_RELEASE_NOTIFY').toLowerCase();
+          if (['false', '0', 'off', 'no'].includes(notify)) { console.log('[discord] DISCORD_RELEASE_NOTIFY desligado, pulando.'); process.exit(0); }
           if (!webhook) { console.log('[discord] sem DISCORD_RELEASE_WEBHOOK, pulando.'); process.exit(0); }
           if (!repo || !version) { console.log('[discord] repo/versão ausentes, pulando.'); process.exit(0); }
 
@@ -224,6 +228,8 @@ jobs:
           GH_MODELS_TOKEN: ${{ github.token }}
           LLM_MODEL: ${{ vars.LLM_MODEL }}
           # Notificação de release no Discord (todas opcionais).
+          # Kill switch por repo: var DISCORD_RELEASE_NOTIFY=false desliga.
+          DISCORD_RELEASE_NOTIFY: ${{ vars.DISCORD_RELEASE_NOTIFY }}
           DISCORD_RELEASE_WEBHOOK: ${{ secrets.UPDATE_DISCORD_WEBHOOK }}
           LOGO_MRIQBOX_URL: ${{ secrets.LOGO_MRIQBOX_URL }}
           RESOURCE_MRIQBOX_URL: ${{ secrets.RESOURCE_MRIQBOX_URL }}
