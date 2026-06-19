@@ -1,0 +1,141 @@
+name: Callable — Recipe Release
+
+# Release para repositórios de RECEITA do txAdmin (ex.: mriTxRecipe).
+# Diferente do callable-release (resources FiveM): aqui não há build de resource
+# nem fxmanifest. O fluxo é: semantic-release usando o .releaserc.json do repo
+# chamador, e — só quando uma versão é de fato publicada — empacota os arquivos
+# listados em .release-files.json num zip e sobe para o S3/R2, além de
+# sincronizar a pasta de recipes e o manifesto.
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        type: string
+        default: '20'
+      # Caminho do JSON que lista os arquivos/pastas a empacotar (chave `include`).
+      release-files:
+        type: string
+        default: '.release-files.json'
+      # Nome do zip gerado e enviado para releases/ no bucket.
+      zip-name:
+        type: string
+        default: 'mri_Qbox.zip'
+      # Pasta de recipes sincronizada para latest/recipes/ no bucket.
+      recipes-dir:
+        type: string
+        default: 'recipes'
+      # Manifesto enviado para latest/<arquivo> no bucket.
+      recipes-manifest:
+        type: string
+        default: 'recipes.json'
+      # Recipe copiada como latest/recipe.yaml (compat. legada). Vazio = pula.
+      legacy-recipe:
+        type: string
+        default: 'recipes/base.yaml'
+    secrets:
+      # PAT da org, usado pelo semantic-release (@semantic-release/git + github).
+      GH_TOKEN:
+        required: true
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      AWS_REGION:
+        required: true
+      AWS_S3_BUCKET:
+        required: true
+      # Endpoint de S3-compatível (ex.: Cloudflare R2). Vazio = AWS S3 padrão.
+      AWS_S3_ENDPOINT:
+        required: false
+      # Prefixo opcional dentro do bucket (com ou sem barra final).
+      AWS_S3_PATH:
+        required: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      # Usa o .releaserc.json do próprio repo chamador (não inline aqui), apenas
+      # garantindo os plugins necessários no runner.
+      - name: Run Semantic Release
+        id: semantic
+        uses: cycjimmy/semantic-release-action@v4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        with:
+          extra_plugins: |
+            @semantic-release/changelog
+            @semantic-release/exec
+            @semantic-release/git
+
+      - name: Bundle and Upload to S3
+        if: steps.semantic.outputs.new_release_published == 'true'
+        run: |
+          set -euo pipefail
+
+          # Parse files to include from o JSON de release-files
+          PATHS=$(jq -r '.include | join(" ")' "$RELEASE_FILES")
+
+          echo "Bundling the following assets: $PATHS"
+
+          # Create ZIP bundle
+          zip -r "$ZIP_NAME" $PATHS
+
+          # Configure AWS credentials and upload
+          # Note: AWS CLI is pre-installed on GitHub-hosted runners
+          # Using --endpoint-url for S3-compatible storage like Cloudflare R2
+          ENDPOINT_URL="${AWS_S3_ENDPOINT:-}"
+          S3_PATH="${AWS_S3_PATH:-}"
+
+          # Ensure S3_PATH ends with a slash if provided
+          if [ -n "$S3_PATH" ] && [[ "$S3_PATH" != */ ]]; then
+            S3_PATH="$S3_PATH/"
+          fi
+
+          EP_ARGS=()
+          if [ -n "$ENDPOINT_URL" ]; then
+            EP_ARGS=(--endpoint-url "$ENDPOINT_URL")
+          fi
+
+          BUCKET="s3://${AWS_S3_BUCKET}/${S3_PATH}"
+
+          aws s3 cp "$ZIP_NAME" "${BUCKET}releases/$ZIP_NAME" "${EP_ARGS[@]}"
+          # Sync recipes folder and manifest
+          aws s3 sync "$RECIPES_DIR/" "${BUCKET}latest/$RECIPES_DIR/" "${EP_ARGS[@]}"
+          aws s3 cp "$RECIPES_MANIFEST" "${BUCKET}latest/$RECIPES_MANIFEST" "${EP_ARGS[@]}"
+          # Optional: keep a copy of base recipe as recipe.yaml for legacy support
+          if [ -n "$LEGACY_RECIPE" ]; then
+            aws s3 cp "$LEGACY_RECIPE" "${BUCKET}latest/recipe.yaml" "${EP_ARGS[@]}"
+          fi
+
+          echo "Release bundle $ZIP_NAME successfully uploaded."
+        env:
+          RELEASE_FILES: ${{ inputs.release-files }}
+          ZIP_NAME: ${{ inputs.zip-name }}
+          RECIPES_DIR: ${{ inputs.recipes-dir }}
+          RECIPES_MANIFEST: ${{ inputs.recipes-manifest }}
+          LEGACY_RECIPE: ${{ inputs.legacy-recipe }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+          AWS_S3_ENDPOINT: ${{ secrets.AWS_S3_ENDPOINT }}
+          AWS_S3_PATH: ${{ secrets.AWS_S3_PATH }}
