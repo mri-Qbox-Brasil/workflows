@@ -2,7 +2,7 @@
 
 Repositório central de workflows reutilizáveis (callables) para os scripts FiveM da MRI Qbox Brasil.
 
-Também publica o pacote npm `@mri-qbox-brasil/fivem-scripts`, que contém os scripts de build e release usados pelos callables.
+Também publica o pacote npm `@mri-qbox-brasil/workflows`, que contém os scripts de build e release usados pelos callables.
 
 ---
 

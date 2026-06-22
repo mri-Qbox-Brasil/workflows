@@ -56,10 +56,10 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           scope: '@mri-qbox-brasil'
 
-      - name: Install fivem-scripts e semantic-release
+      - name: Install workflows e semantic-release
         run: |
           npm install --no-save \
-            @mri-qbox-brasil/fivem-scripts \
+            @mri-qbox-brasil/workflows \
             semantic-release \
             @semantic-release/changelog \
             @semantic-release/commit-analyzer \
@@ -218,7 +218,7 @@ jobs:
               '@semantic-release/release-notes-generator',
               '@semantic-release/changelog',
               ['@semantic-release/exec', {
-                prepareCmd: "REPO_NAME=$(echo $GITHUB_REPOSITORY | cut -d'/' -f2) && npx fivem-scripts set-version ${nextRelease.version} \"$WEB_PATH\" && npx fivem-scripts build \"$REPO_NAME\" \"$WEB_PATH\"",
+                prepareCmd: "REPO_NAME=$(echo $GITHUB_REPOSITORY | cut -d'/' -f2) && npx workflows set-version ${nextRelease.version} \"$WEB_PATH\" && npx workflows build \"$REPO_NAME\" \"$WEB_PATH\"",
                 // Notifica o Discord só quando uma versão é de fato publicada.
                 // Passa apenas a versão (semver) — o script busca as notas via API.
                 successCmd: "node .ci/discord-release.js '${nextRelease.version}'"

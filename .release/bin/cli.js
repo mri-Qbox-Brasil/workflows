@@ -15,7 +15,7 @@ const commands = {
 }
 
 if (!command || !commands[command]) {
-    console.error(`Usage: fivem-scripts <${Object.keys(commands).join('|')}> [args...]`)
+    console.error(`Usage: workflows <${Object.keys(commands).join('|')}> [args...]`)
     process.exit(1)
 }
 

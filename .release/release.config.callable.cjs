@@ -8,7 +8,7 @@ module.exports = {
         [
             '@semantic-release/exec',
             {
-                prepareCmd: "REPO_NAME=$(echo $GITHUB_REPOSITORY | cut -d'/' -f2) && npx fivem-scripts set-version ${nextRelease.version} \"$WEB_PATH\" && npx fivem-scripts build \"$REPO_NAME\" \"$WEB_PATH\""
+                prepareCmd: "REPO_NAME=$(echo $GITHUB_REPOSITORY | cut -d'/' -f2) && npx workflows set-version ${nextRelease.version} \"$WEB_PATH\" && npx workflows build \"$REPO_NAME\" \"$WEB_PATH\""
             }
         ],
         // Commita de volta o bump do package.json do front e o CHANGELOG para
