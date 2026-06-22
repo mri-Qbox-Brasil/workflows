@@ -6,6 +6,12 @@ on:
       node-version:
         type: string
         default: '20'
+      # Diretorio do front (onde mora o package.json exibido na UI). Usado tanto
+      # pelo set-version (bump do fallback de versao) quanto pelo build. Default
+      # "web"; configure no repo chamador quando o front estiver em outro lugar.
+      web-path:
+        type: string
+        default: 'web'
     secrets:
       GH_TOKEN:
         required: true
@@ -59,6 +65,7 @@ jobs:
             @semantic-release/commit-analyzer \
             @semantic-release/release-notes-generator \
             @semantic-release/exec \
+            @semantic-release/git \
             @semantic-release/github
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GH_TOKEN }}
@@ -211,10 +218,17 @@ jobs:
               '@semantic-release/release-notes-generator',
               '@semantic-release/changelog',
               ['@semantic-release/exec', {
-                prepareCmd: "REPO_NAME=$(echo $GITHUB_REPOSITORY | cut -d'/' -f2) && npx fivem-scripts set-version ${nextRelease.version} && npx fivem-scripts build $REPO_NAME",
+                prepareCmd: "REPO_NAME=$(echo $GITHUB_REPOSITORY | cut -d'/' -f2) && npx fivem-scripts set-version ${nextRelease.version} \"$WEB_PATH\" && npx fivem-scripts build \"$REPO_NAME\" \"$WEB_PATH\"",
                 // Notifica o Discord só quando uma versão é de fato publicada.
                 // Passa apenas a versão (semver) — o script busca as notas via API.
                 successCmd: "node .ci/discord-release.js '${nextRelease.version}'"
+              }],
+              // Commita de volta o bump do package.json do front e o CHANGELOG,
+              // para que builds de fonte reflitam a última versão (issue #3).
+              // NUNCA inclui fxmanifest.lua aqui: o source mantém __VERSION__.
+              ['@semantic-release/git', {
+                assets: [(process.env.WEB_PATH || 'web') + '/package.json', 'CHANGELOG.md'],
+                message: 'chore(release): ${nextRelease.version} [skip ci]'
               }],
               ['@semantic-release/github', {
                 assets: [{ path: 'dist/*.zip', label: 'Download' }],
@@ -227,6 +241,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.GH_TOKEN }}
+          # Diretorio do front, consumido pelo set-version, build e git assets.
+          WEB_PATH: ${{ inputs.web-path }}
           # Token para o GitHub Models (acesso é por identidade da conta, não por
           # escopo). Prefere um PAT dedicado; senão usa o GH_TOKEN (PAT pessoal do
           # release); em último caso o GITHUB_TOKEN (403 em org free -> notas cruas).
