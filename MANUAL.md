@@ -1,4 +1,4 @@
-# Manual — template-fivem Workflow Library
+# Manual — workflows Workflow Library
 
 ## Visão Geral
 

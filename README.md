@@ -1,4 +1,4 @@
-# template-fivem — Workflow Library
+# workflows — Workflow Library
 
 Repositório central de workflows reutilizáveis (callables) para os scripts FiveM da MRI Qbox Brasil.
 
@@ -22,7 +22,7 @@ Nos repositórios de script, delegue para os callables:
 ```yaml
 jobs:
   release:
-    uses: mri-Qbox-Brasil/template-fivem/.github/workflows/callable-release.yml@main
+    uses: mri-Qbox-Brasil/workflows/.github/workflows/callable-release.yml@main
     secrets:
       GH_TOKEN: ${{ secrets.GH_TOKEN }}
 ```
