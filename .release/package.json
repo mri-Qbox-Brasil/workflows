@@ -2,6 +2,10 @@
     "name": "@mri-qbox-brasil/workflows",
     "version": "0.0.0-development",
     "description": "Scripts de build, release e docs para recursos FiveM da MRI Qbox Brasil",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/mri-Qbox-Brasil/workflows.git"
+    },
     "bin": {
         "workflows": "./bin/cli.js"
     },
