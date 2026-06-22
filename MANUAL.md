@@ -1,8 +1,8 @@
-# Manual — template-fivem Workflow Library
+# Manual — workflows Workflow Library
 
 ## Visão Geral
 
-Este repositório fornece workflows reutilizáveis (`workflow_call`) e o pacote npm `@mri-qbox-brasil/fivem-scripts` para os scripts FiveM da MRI Qbox Brasil.
+Este repositório fornece workflows reutilizáveis (`workflow_call`) e o pacote npm `@mri-qbox-brasil/workflows` para os scripts FiveM da MRI Qbox Brasil.
 
 ## Callables disponíveis
 
@@ -32,10 +32,10 @@ Abre PR sincronizando o repositório com o `script-template`.
 
 ## Pacote npm
 
-O pacote `@mri-qbox-brasil/fivem-scripts` é publicado automaticamente a cada release e expõe:
+O pacote `@mri-qbox-brasil/workflows` é publicado automaticamente a cada release e expõe:
 
 | Comando | Descrição |
 |---|---|
-| `fivem-scripts build <nome>` | Build e empacotamento do recurso em zip |
-| `fivem-scripts set-version` | Injeta versão no `fxmanifest.lua` |
-| `fivem-scripts update-actions` | Atualiza versões de actions nos workflows |
+| `workflows build <nome> [web-dir]` | Build e empacotamento do recurso em zip |
+| `workflows set-version <versão> [web-dir]` | Injeta versão no `fxmanifest.lua` e sincroniza `web/package.json` |
+| `workflows update-actions` | Atualiza versões de actions nos workflows |

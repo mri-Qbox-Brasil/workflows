@@ -29,13 +29,13 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           scope: '@mri-qbox-brasil'
 
-      - name: Install fivem-scripts
-        run: npm install --no-save @mri-qbox-brasil/fivem-scripts
+      - name: Install workflows
+        run: npm install --no-save @mri-qbox-brasil/workflows
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GH_TOKEN }}
 
       - name: Run update
-        run: npx fivem-scripts update-actions
+        run: npx workflows update-actions
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           PR_TEAM: ${{ inputs.pr-team }}

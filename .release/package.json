@@ -1,9 +1,9 @@
 {
-    "name": "@mri-qbox-brasil/fivem-scripts",
+    "name": "@mri-qbox-brasil/workflows",
     "version": "0.0.0-development",
     "description": "Scripts de build, release e docs para recursos FiveM da MRI Qbox Brasil",
     "bin": {
-        "fivem-scripts": "./bin/cli.js"
+        "workflows": "./bin/cli.js"
     },
     "files": [
         "bin/",
