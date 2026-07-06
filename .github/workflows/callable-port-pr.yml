@@ -1,0 +1,207 @@
+name: Callable — Portar PR para repo privado
+
+# Porta um PR aberto no repo PÚBLICO (que chama este workflow) para um repo
+# PRIVADO de fonte, como 1 commit squash preservando o AUTOR original, abre um
+# PR no privado e (opcional) fecha o PR público com um comentário informativo.
+#
+# Chamado a partir de um caller que dispara em pull_request_target (PR de fork
+# tem token read-only e sem secrets no evento pull_request comum) ou em
+# workflow_dispatch (porte manual passando pr-number).
+#
+# Seguro: NUNCA executamos o código do PR — apenas aplicamos o diff como texto.
+
+on:
+  workflow_call:
+    inputs:
+      private-repo:
+        description: 'owner/repo de destino. Vazio => usa "<repo-público>-source" por convenção.'
+        type: string
+        default: ''
+      private-base:
+        description: 'Branch base no repo privado'
+        type: string
+        default: main
+      pr-number:
+        description: 'Número do PR público (obrigatório no dispatch manual; vazio no gatilho automático usa o PR do evento)'
+        type: string
+        default: ''
+      apply-exclude:
+        description: 'Globs separados por espaço para EXCLUIR do diff (ex.: artefatos de build "html/*")'
+        type: string
+        default: ''
+      close-public-pr:
+        description: 'Fechar o PR público com comentário após portar'
+        type: boolean
+        default: true
+      pr-team:
+        description: 'Slug do time da org a mencionar no comentário quando o porte falhar (ex.: "merge")'
+        type: string
+        default: ''
+      messages-repo:
+        description: 'Repo owner/repo onde ficam os textos dos comentários (.github/messages/*.md)'
+        type: string
+        default: 'mri-Qbox-Brasil/workflows'
+      messages-ref:
+        description: 'Ref/branch de onde ler os textos dos comentários'
+        type: string
+        default: 'main'
+    secrets:
+      GH_TOKEN:
+        description: 'PAT com Contents R&W + Pull requests R&W no repo público E no privado'
+        required: true
+
+jobs:
+  port:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      PUBLIC_REPO: ${{ github.repository }}
+      PRIVATE_REPO: ${{ inputs.private-repo != '' && inputs.private-repo || format('{0}-source', github.repository) }}
+      PRIVATE_BASE: ${{ inputs.private-base }}
+      MESSAGES_REPO: ${{ inputs.messages-repo }}
+      MESSAGES_REF: ${{ inputs.messages-ref }}
+    steps:
+      - name: Resolver número do PR e coletar metadados
+        id: meta
+        run: |
+          set -euo pipefail
+
+          PR_NUMBER="${{ inputs.pr-number }}"
+          if [ -z "$PR_NUMBER" ]; then
+            PR_NUMBER="${{ github.event.pull_request.number }}"
+          fi
+          if [ -z "$PR_NUMBER" ]; then
+            echo "::error::Nenhum número de PR — no dispatch manual informe 'pr-number'."
+            exit 1
+          fi
+
+          mkdir -p /tmp/meta
+          echo "$PR_NUMBER" > /tmp/meta/pr_number
+
+          pr=$(gh api "repos/${PUBLIC_REPO}/pulls/${PR_NUMBER}")
+          echo "$pr" | jq -r '.title'      > /tmp/meta/title
+          echo "$pr" | jq -r '.html_url'   > /tmp/meta/url
+          echo "$pr" | jq -r '.body // ""' > /tmp/meta/body
+          echo "$pr" | jq -r '.user.login' > /tmp/meta/login
+
+          # Autor real: primeiro commit do PR (nome + email de verdade).
+          author=$(gh api "repos/${PUBLIC_REPO}/pulls/${PR_NUMBER}/commits" --jq '.[0].commit.author')
+          echo "$author" | jq -r '.name'  > /tmp/meta/author_name
+          echo "$author" | jq -r '.email' > /tmp/meta/author_email
+
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout do repo privado (fonte)
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ env.PRIVATE_REPO }}
+          token: ${{ secrets.GH_TOKEN }}
+          fetch-depth: 0
+          path: source
+
+      - name: Aplicar diff como 1 commit (squash) preservando o autor
+        id: apply
+        env:
+          PR_NUMBER: ${{ steps.meta.outputs.pr_number }}
+          APPLY_EXCLUDE: ${{ inputs.apply-exclude }}
+        run: |
+          set -euo pipefail
+
+          # Diff líquido introduzido pelo PR (gh calcula contra a base do PR).
+          gh pr diff "$PR_NUMBER" --repo "$PUBLIC_REPO" > /tmp/pr.diff
+
+          cd source
+          branch="port/pr-${PR_NUMBER}"
+          git checkout -b "$branch" "origin/${PRIVATE_BASE}"
+
+          # Globs a excluir do apply (ex.: build output que não existe na fonte).
+          EXCLUDE_ARGS=()
+          for g in $APPLY_EXCLUDE; do EXCLUDE_ARGS+=(--exclude="$g"); done
+
+          if ! git apply --3way --whitespace=nowarn "${EXCLUDE_ARGS[@]}" /tmp/pr.diff; then
+            echo "::error::Conflito ao aplicar o diff no repo privado — porte manual necessário."
+            exit 1
+          fi
+
+          git add -A
+          if git diff --cached --quiet; then
+            echo "::error::O diff não produziu mudanças (paths não batem ou tudo foi excluído?)."
+            exit 1
+          fi
+
+          # Committer = bot; AUTHOR = contribuidor original.
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          author_name=$(cat /tmp/meta/author_name)
+          author_email=$(cat /tmp/meta/author_email)
+          url=$(cat /tmp/meta/url)
+
+          {
+            cat /tmp/meta/title
+            echo
+            echo "Portado do PR público #${PR_NUMBER}: ${url}"
+            echo
+            echo "Co-authored-by: ${author_name} <${author_email}>"
+          } > /tmp/meta/commit_msg
+
+          git commit --author="${author_name} <${author_email}>" -F /tmp/meta/commit_msg
+          git push origin "$branch" --force-with-lease
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Abrir PR no repo privado
+        id: openpr
+        env:
+          PR_NUMBER: ${{ steps.meta.outputs.pr_number }}
+          BRANCH: ${{ steps.apply.outputs.branch }}
+        run: |
+          set -euo pipefail
+          title=$(cat /tmp/meta/title)
+          url=$(cat /tmp/meta/url)
+          login=$(cat /tmp/meta/login)
+
+          {
+            echo "Porte automático do PR público **#${PR_NUMBER}** (${url})."
+            echo
+            echo "Autor original: @${login}"
+            echo
+            echo "---"
+            echo
+            cat /tmp/meta/body
+          } > /tmp/meta/pr_body
+
+          pr_url=$(gh pr create \
+            --repo "$PRIVATE_REPO" \
+            --base "$PRIVATE_BASE" \
+            --head "$BRANCH" \
+            --title "$title" \
+            --body-file /tmp/meta/pr_body)
+          echo "private_pr_url=$pr_url" >> "$GITHUB_OUTPUT"
+          echo "PR privado criado: $pr_url"
+
+      - name: Fechar o PR público com comentário informativo
+        if: ${{ inputs.close-public-pr }}
+        env:
+          PR_NUMBER: ${{ steps.meta.outputs.pr_number }}
+          PRIVATE_PR_URL: ${{ steps.openpr.outputs.private_pr_url }}
+        run: |
+          set -uo pipefail
+          msg=$(gh api "repos/${MESSAGES_REPO}/contents/.github/messages/port-pr-thanks.md?ref=${MESSAGES_REF}" -H "Accept: application/vnd.github.raw") || msg="Obrigado pela contribuição! Levamos sua alteração para revisão na fonte interna, preservando você como autor. Fechando este PR para manter o fluxo pela fonte. 💚"
+          msg="${msg//\{\{PR_NUMBER\}\}/$PR_NUMBER}"
+          msg="${msg//\{\{PRIVATE_PR_URL\}\}/$PRIVATE_PR_URL}"
+          gh pr comment "$PR_NUMBER" --repo "$PUBLIC_REPO" --body "$msg"
+          gh pr close "$PR_NUMBER" --repo "$PUBLIC_REPO"
+
+      - name: (Em caso de falha) avisar no PR público e marcar o time
+        if: failure()
+        env:
+          PR_NUMBER: ${{ steps.meta.outputs.pr_number }}
+          PR_TEAM: ${{ inputs.pr-team }}
+          ORG: ${{ github.repository_owner }}
+        run: |
+          mention=""
+          if [ -n "$PR_TEAM" ]; then mention="@${ORG}/${PR_TEAM} "; fi
+          msg=$(gh api "repos/${MESSAGES_REPO}/contents/.github/messages/port-pr-fail.md?ref=${MESSAGES_REF}" -H "Accept: application/vnd.github.raw") || msg="{{TEAM_MENTION}}⚠️ Falha ao portar o PR #{{PR_NUMBER}} para a fonte interna. Porte manual necessário."
+          msg="${msg//\{\{TEAM_MENTION\}\}/$mention}"
+          msg="${msg//\{\{PR_NUMBER\}\}/$PR_NUMBER}"
+          gh pr comment "$PR_NUMBER" --repo "$PUBLIC_REPO" --body "$msg" || true
