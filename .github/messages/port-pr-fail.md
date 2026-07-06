@@ -1,0 +1,1 @@
+{{TEAM_MENTION}}⚠️ Não consegui portar o PR #{{PR_NUMBER}} automaticamente para a fonte interna (provável conflito de merge ou arquivos que não existem na fonte). Um mantenedor vai portar manualmente. O PR foi mantido aberto.

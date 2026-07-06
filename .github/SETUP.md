@@ -21,6 +21,8 @@ Este guia descreve como configurar um repositório de script FiveM para usar os 
 |---|---|---|---|
 | `GH_TOKEN` | Secret | Todos | PAT da organização |
 | `PR_TEAM` | Variable | `update-actions` | Time do GitHub para atribuir PRs. Opcional. |
+| `PORT_TO_SOURCE` | Variable | `port-pr` | `true` habilita o porte de PRs para a fonte privada. |
+| `SOURCE_REPO` | Variable | `port-pr` | Repo de destino, se diferente de `<repo>-source`. Opcional. |
 
 ---
 
@@ -89,6 +91,55 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
+### Port PR (público → fonte privada)
+
+Porta PRs da comunidade do repo público para o repo de fonte privado como **1
+commit squash preservando o autor original**, abre um PR no privado e fecha o PR
+público com um comentário informativo. Dispara ao abrir um PR
+(`pull_request_target`) ou manualmente (`workflow_dispatch` com `pr-number`).
+
+```yaml
+on:
+  pull_request_target:
+    types: [opened]
+  workflow_dispatch:
+    inputs:
+      pr-number:
+        required: true
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  port:
+    if: ${{ vars.PORT_TO_SOURCE == 'true' }}
+    uses: mri-Qbox-Brasil/workflows/.github/workflows/callable-port-pr.yml@main
+    secrets:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+    with:
+      private-repo: ${{ vars.SOURCE_REPO }}   # vazio => <repo>-source
+      pr-number: ${{ inputs.pr-number }}
+      apply-exclude: 'html/*'
+```
+
+**Para habilitar num repo:**
+
+1. Defina a variável de repositório **`PORT_TO_SOURCE = true`** (Settings →
+   Secrets and variables → Actions → **Variables**). Sem ela, o workflow fica
+   inerte — importante porque o caller é sincronizado para todos os repos via
+   template, mas só os que têm fonte privada devem portar.
+2. O destino padrão é **`<repo-público>-source`**. Para outro nome, defina a
+   variável `SOURCE_REPO = owner/repo`.
+3. O `GH_TOKEN` (PAT da org) precisa de **Contents R&W + Pull requests R&W** no
+   repo público **e** no privado de destino.
+
+**Textos dos comentários** ficam versionados neste repo em
+`.github/messages/port-pr-thanks.md` (agradecimento/fechamento) e
+`port-pr-fail.md` (falha). Placeholders suportados: `{{PR_NUMBER}}`,
+`{{TEAM_MENTION}}` (só no de falha) e `{{PRIVATE_PR_URL}}` (só no de
+agradecimento). O time marcado na falha vem da variável de org `PR_TEAM`.
+
 ---
 
 ## 4. Checklist
@@ -97,3 +148,4 @@ jobs:
 - [ ] `fxmanifest.lua` contém `version '__VERSION__'`
 - [ ] `friendly-name` atualizado em `repo-dispatch.yml`
 - [ ] Commits seguem Conventional Commits
+- [ ] (Se usar porte de PRs) variável `PORT_TO_SOURCE = true` definida e `GH_TOKEN` com acesso ao repo `-source`
