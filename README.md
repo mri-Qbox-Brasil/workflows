@@ -11,9 +11,12 @@ Também publica o pacote npm `@mri-qbox-brasil/workflows`, que contém os script
 | Workflow | O que faz |
 |---|---|
 | `callable-release.yml` | Build do recurso + semantic release automatizado |
+| `callable-recipe-release.yml` | Release de repos de receita txAdmin (empacota e sobe para S3/R2) |
+| `callable-lint.yml` | ESLint (web) e/ou luacheck (Lua) |
 | `callable-update-actions.yml` | Atualização de versões das GitHub Actions |
 | `callable-repo-dispatch.yml` | Notificação ao repo de documentação |
 | `callable-template-sync.yml` | Sincronização com o `script-template` |
+| `callable-port-pr.yml` | Porta PRs da comunidade (repo público) para a fonte privada preservando o autor |
 
 ## Como usar
 
