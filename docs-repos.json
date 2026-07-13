@@ -1,0 +1,583 @@
+[
+  {
+    "repo": "addons",
+    "name": "Addons",
+    "publish": false,
+    "reason": "assets/mapas, não é um recurso"
+  },
+  {
+    "repo": "angelicxs-CivilianJobs",
+    "name": "Angelicxs CivilianJobs"
+  },
+  {
+    "repo": "ars_ambulancejob",
+    "name": "Ars Ambulancejob"
+  },
+  {
+    "repo": "ars_hunting",
+    "name": "Ars Hunting"
+  },
+  {
+    "repo": "bl_bridge",
+    "name": "Bl Bridge",
+    "publish": false,
+    "reason": "biblioteca (bridge)"
+  },
+  {
+    "repo": "bob74_ipl",
+    "name": "Bob74 IPL"
+  },
+  {
+    "repo": "cdn-fool",
+    "name": "CDN Fool"
+  },
+  {
+    "repo": "cdn-fuel",
+    "name": "CDN Fuel"
+  },
+  {
+    "repo": "cfx-anes-gates",
+    "name": "Cfx Anes Gates"
+  },
+  {
+    "repo": "cfx-server-data",
+    "name": "Cfx Server Data",
+    "publish": false,
+    "reason": "coleção de resources, não é um recurso"
+  },
+  {
+    "repo": "crouch_crawl",
+    "name": "Crouch Crawl"
+  },
+  {
+    "repo": "cuchi_computer",
+    "name": "Cuchi Computer"
+  },
+  {
+    "repo": "cw-driftchip",
+    "name": "CW Driftchip"
+  },
+  {
+    "repo": "cw-performance",
+    "name": "CW Performance"
+  },
+  {
+    "repo": "cw-racingapp",
+    "name": "CW Racingapp"
+  },
+  {
+    "repo": "cw-rep",
+    "name": "CW Rep"
+  },
+  {
+    "repo": "dom_trucking",
+    "name": "Dom Trucking"
+  },
+  {
+    "repo": "fivem-freecam",
+    "name": "Fivem Freecam"
+  },
+  {
+    "repo": "hookers",
+    "name": "Hookers"
+  },
+  {
+    "repo": "idle",
+    "name": "Idle"
+  },
+  {
+    "repo": "illenium-appearance",
+    "name": "Illenium Appearance"
+  },
+  {
+    "repo": "interact-sound",
+    "name": "Interact Sound"
+  },
+  {
+    "repo": "it-drugs",
+    "name": "It Drugs"
+  },
+  {
+    "repo": "jim_bridge",
+    "name": "Jim Bridge",
+    "publish": false,
+    "reason": "biblioteca (bridge)"
+  },
+  {
+    "repo": "jim-mining",
+    "name": "Jim Mining"
+  },
+  {
+    "repo": "jim-trains",
+    "name": "Jim Trains"
+  },
+  {
+    "repo": "kloud-farmjob",
+    "name": "Kloud Farmjob"
+  },
+  {
+    "repo": "lunar_fishing",
+    "name": "Lunar Fishing"
+  },
+  {
+    "repo": "lvc",
+    "name": "Lvc"
+  },
+  {
+    "repo": "maji-gasdelivery",
+    "name": "Maji Gasdelivery"
+  },
+  {
+    "repo": "mhacking",
+    "name": "Mhacking"
+  },
+  {
+    "repo": "mm_radio",
+    "name": "Mm Radio"
+  },
+  {
+    "repo": "mri_Qadmin",
+    "name": "MRI Qadmin"
+  },
+  {
+    "repo": "mri_Qbackpack",
+    "name": "MRI Qbackpack"
+  },
+  {
+    "repo": "mri_Qblackout",
+    "name": "MRI Qblackout"
+  },
+  {
+    "repo": "mri_Qblips",
+    "name": "MRI Qblips"
+  },
+  {
+    "repo": "mri_Qboombox",
+    "name": "MRI Qboombox"
+  },
+  {
+    "repo": "mri_Qbox",
+    "name": "MRI Qbox"
+  },
+  {
+    "repo": "mri_Qcarkeys",
+    "name": "MRI Qcarkeys"
+  },
+  {
+    "repo": "mri_Qcarwash",
+    "name": "MRI Qcarwash"
+  },
+  {
+    "repo": "mri_Qchat",
+    "name": "MRI Qchat"
+  },
+  {
+    "repo": "mri_Qcrafting",
+    "name": "MRI Qcrafting"
+  },
+  {
+    "repo": "mri_Qdraw",
+    "name": "MRI Qdraw"
+  },
+  {
+    "repo": "mri_Qelevators",
+    "name": "MRI Qelevators"
+  },
+  {
+    "repo": "mri_QexoticPaints",
+    "name": "MRI QexoticPaints"
+  },
+  {
+    "repo": "mri_Qfarm",
+    "name": "MRI Qfarm"
+  },
+  {
+    "repo": "mri_Qfleecaheist",
+    "name": "MRI Qfleecaheist"
+  },
+  {
+    "repo": "mri_Qfps",
+    "name": "MRI Qfps"
+  },
+  {
+    "repo": "mri_Qhud",
+    "name": "MRI Qhud"
+  },
+  {
+    "repo": "mri_Qjobcenter",
+    "name": "MRI Qjobcenter"
+  },
+  {
+    "repo": "mri_Qjobsystem",
+    "name": "MRI Qjobsystem"
+  },
+  {
+    "repo": "mri_Qloadscreen",
+    "name": "MRI Qloadscreen"
+  },
+  {
+    "repo": "mri_Qmarkerplacer",
+    "name": "MRI Qmarkerplacer"
+  },
+  {
+    "repo": "mri_Qminigames",
+    "name": "MRI Qminigames"
+  },
+  {
+    "repo": "mri_Qnitro",
+    "name": "MRI Qnitro"
+  },
+  {
+    "repo": "mri_Qobjects",
+    "name": "MRI Qobjects"
+  },
+  {
+    "repo": "mri_Qpaintjob",
+    "name": "MRI Qpaintjob"
+  },
+  {
+    "repo": "mri_Qpets",
+    "name": "MRI Qpets"
+  },
+  {
+    "repo": "mri_Qrobnpcs",
+    "name": "MRI Qrobnpcs"
+  },
+  {
+    "repo": "mri_Qsafezones",
+    "name": "MRI Qsafezones"
+  },
+  {
+    "repo": "mri_Qspawn-source",
+    "name": "MRI Qspawn",
+    "slug": "mri_Qspawn"
+  },
+  {
+    "repo": "mri_Qspotlights",
+    "name": "MRI Qspotlights"
+  },
+  {
+    "repo": "mri_Qstarterpack",
+    "name": "MRI Qstarterpack"
+  },
+  {
+    "repo": "mri_Qstashes",
+    "name": "MRI Qstashes"
+  },
+  {
+    "repo": "mri_Qstorerobbery",
+    "name": "MRI Qstorerobbery"
+  },
+  {
+    "repo": "mri_Qvehcontrol",
+    "name": "MRI Qvehcontrol"
+  },
+  {
+    "repo": "mri_Qvinewood",
+    "name": "MRI Qvinewood"
+  },
+  {
+    "repo": "mri_Qwhitelist",
+    "name": "MRI Qwhitelist"
+  },
+  {
+    "repo": "MugShotBase64",
+    "name": "MugShotBase64",
+    "publish": false,
+    "reason": "biblioteca"
+  },
+  {
+    "repo": "ND_Police",
+    "name": "ND Police"
+  },
+  {
+    "repo": "object_gizmo",
+    "name": "Object Gizmo",
+    "publish": false,
+    "reason": "biblioteca"
+  },
+  {
+    "repo": "ox_compat",
+    "name": "Ox Compat",
+    "publish": false,
+    "reason": "camada de compatibilidade, sem manual próprio"
+  },
+  {
+    "repo": "ox_doorlock",
+    "name": "Ox Doorlock",
+    "publish": false,
+    "reason": "já documentado em /overextended"
+  },
+  {
+    "repo": "ox_inventory",
+    "name": "Ox Inventory",
+    "publish": false,
+    "reason": "já documentado em /overextended"
+  },
+  {
+    "repo": "ox_lib",
+    "name": "Ox Lib",
+    "publish": false,
+    "reason": "já documentado em /overextended"
+  },
+  {
+    "repo": "ox_target",
+    "name": "Ox Target",
+    "publish": false,
+    "reason": "já documentado em /overextended"
+  },
+  {
+    "repo": "pickle_prisons",
+    "name": "Pickle Prisons"
+  },
+  {
+    "repo": "pickle_waypoints",
+    "name": "Pickle Waypoints"
+  },
+  {
+    "repo": "pickle_weaponthrowing",
+    "name": "Pickle Weaponthrowing"
+  },
+  {
+    "repo": "pma-voice",
+    "name": "PMA Voice"
+  },
+  {
+    "repo": "PolyZone",
+    "name": "PolyZone",
+    "publish": false,
+    "reason": "biblioteca"
+  },
+  {
+    "repo": "ps-adminmenu",
+    "name": "PS Adminmenu",
+    "publish": false,
+    "reason": "repositório arquivado (read-only)"
+  },
+  {
+    "repo": "ps-banking",
+    "name": "PS Banking"
+  },
+  {
+    "repo": "ps-buffs",
+    "name": "PS Buffs"
+  },
+  {
+    "repo": "ps-dispatch",
+    "name": "PS Dispatch"
+  },
+  {
+    "repo": "ps-housing",
+    "name": "PS Housing"
+  },
+  {
+    "repo": "ps-mdt",
+    "name": "PS MDT"
+  },
+  {
+    "repo": "ps-realtor",
+    "name": "PS Realtor"
+  },
+  {
+    "repo": "qbx_adminmenu",
+    "name": "Qbx Adminmenu"
+  },
+  {
+    "repo": "qbx_bankrobbery",
+    "name": "Qbx Bankrobbery"
+  },
+  {
+    "repo": "qbx_cityhall",
+    "name": "Qbx Cityhall"
+  },
+  {
+    "repo": "qbx_core",
+    "name": "Qbx Core"
+  },
+  {
+    "repo": "qbx_customs",
+    "name": "Qbx Customs"
+  },
+  {
+    "repo": "qbx_density",
+    "name": "Qbx Density"
+  },
+  {
+    "repo": "qbx_drugs",
+    "name": "Qbx Drugs"
+  },
+  {
+    "repo": "qbx_fireworks",
+    "name": "Qbx Fireworks"
+  },
+  {
+    "repo": "qbx_garbagejob",
+    "name": "Qbx Garbagejob"
+  },
+  {
+    "repo": "qbx_houserobbery",
+    "name": "Qbx Houserobbery"
+  },
+  {
+    "repo": "qbx_idcard",
+    "name": "Qbx Idcard"
+  },
+  {
+    "repo": "qbx_interior",
+    "name": "Qbx Interior"
+  },
+  {
+    "repo": "qbx_jewelery",
+    "name": "Qbx Jewelery"
+  },
+  {
+    "repo": "qbx_lockpick",
+    "name": "Qbx Lockpick"
+  },
+  {
+    "repo": "qbx_management",
+    "name": "Qbx Management"
+  },
+  {
+    "repo": "qbx_mechanicjob",
+    "name": "Qbx Mechanicjob"
+  },
+  {
+    "repo": "qbx_npwd",
+    "name": "Qbx NPWD"
+  },
+  {
+    "repo": "qbx_pawnshop",
+    "name": "Qbx Pawnshop"
+  },
+  {
+    "repo": "qbx_photomode",
+    "name": "Qbx Photomode"
+  },
+  {
+    "repo": "qbx_properties",
+    "name": "Qbx Properties"
+  },
+  {
+    "repo": "qbx_radialmenu",
+    "name": "Qbx Radialmenu"
+  },
+  {
+    "repo": "qbx_recyclejob",
+    "name": "Qbx Recyclejob"
+  },
+  {
+    "repo": "qbx_scrapyard",
+    "name": "Qbx Scrapyard"
+  },
+  {
+    "repo": "qbx_seatbelt",
+    "name": "Qbx Seatbelt"
+  },
+  {
+    "repo": "qbx_smallresources",
+    "name": "Qbx Smallresources"
+  },
+  {
+    "repo": "qbx_spawn",
+    "name": "Qbx Spawn"
+  },
+  {
+    "repo": "qbx_towjob",
+    "name": "Qbx Towjob"
+  },
+  {
+    "repo": "qbx_truckrobbery",
+    "name": "Qbx Truckrobbery"
+  },
+  {
+    "repo": "qbx_vehiclefailure",
+    "name": "Qbx Vehiclefailure"
+  },
+  {
+    "repo": "qbx_vehicles",
+    "name": "Qbx Vehicles"
+  },
+  {
+    "repo": "qbx_vehiclesales",
+    "name": "Qbx Vehiclesales"
+  },
+  {
+    "repo": "qbx_vehicleshop",
+    "name": "Qbx Vehicleshop"
+  },
+  {
+    "repo": "RageUI",
+    "name": "RageUI",
+    "publish": false,
+    "reason": "biblioteca"
+  },
+  {
+    "repo": "randol_cargo",
+    "name": "Randol Cargo"
+  },
+  {
+    "repo": "randol_carheist",
+    "name": "Randol Carheist"
+  },
+  {
+    "repo": "randol_carmeet",
+    "name": "Randol Carmeet"
+  },
+  {
+    "repo": "randol_cityworker",
+    "name": "Randol Cityworker"
+  },
+  {
+    "repo": "randol_combatlog",
+    "name": "Randol Combatlog"
+  },
+  {
+    "repo": "randol_exporting",
+    "name": "Randol Exporting"
+  },
+  {
+    "repo": "randol_ghosthunting",
+    "name": "Randol Ghosthunting"
+  },
+  {
+    "repo": "randol_gscache",
+    "name": "Randol Gscache"
+  },
+  {
+    "repo": "randol_notes",
+    "name": "Randol Notes"
+  },
+  {
+    "repo": "randol_stresszones",
+    "name": "Randol Stresszones"
+  },
+  {
+    "repo": "Renewed-Weathersync",
+    "name": "Renewed Weathersync"
+  },
+  {
+    "repo": "rep-enginewire",
+    "name": "Rep Enginewire"
+  },
+  {
+    "repo": "rep-talkNPC",
+    "name": "Rep TalkNPC"
+  },
+  {
+    "repo": "rhd_garage",
+    "name": "RHD Garage"
+  },
+  {
+    "repo": "safecracker",
+    "name": "Safecracker"
+  },
+  {
+    "repo": "scully_emotemenu",
+    "name": "Scully Emotemenu"
+  },
+  {
+    "repo": "Syn_Sit",
+    "name": "Syn Sit"
+  }
+]

@@ -1,14 +1,32 @@
 name: Callable — Notify Docs Update
 
+# Notifica o repo de documentação de que o MANUAL.md deste repositório mudou.
+#
+# O caller (repo-dispatch.yml) é IDÊNTICO em todos os repos: tudo que varia por
+# repo vem de variáveis (vars.DOC_NAME / vars.DOC_SLUG). Isso o torna imune ao
+# template-sync semanal, que sobrescreveria um friendly-name hardcoded.
+
 on:
   workflow_call:
     inputs:
+      # Nome exibido na sidebar da documentação. Vazio => nome do repositório.
       friendly-name:
         type: string
-        required: true
+        required: false
+        default: ''
       doc-file:
         type: string
         default: 'MANUAL.md'
+      # Slug sob o qual a página é publicada. Vazio => nome do repositório.
+      #
+      # Existe por causa dos repos de fonte privada (<repo>-source): o MANUAL.md
+      # mora no -source, mas a página deve ser publicada com o nome do repo
+      # PÚBLICO. Note que o docs baixa o arquivo de `repo` e publica em `slug` —
+      # são coisas diferentes, e por isso não basta sobrescrever `repo`.
+      publish-as:
+        type: string
+        required: false
+        default: ''
       docs-repository:
         type: string
         default: 'mri-Qbox-Brasil/docs-mriqbox'
@@ -20,10 +38,33 @@ jobs:
   notify-docs:
     runs-on: ubuntu-latest
     steps:
+      - name: Resolver nome e slug
+        id: ctx
+        env:
+          RAW_NAME: ${{ inputs.friendly-name }}
+          RAW_SLUG: ${{ inputs.publish-as }}
+          REPO: ${{ github.event.repository.name }}
+          TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          # Um secret ausente chega como string vazia (o GitHub não aborta), e a
+          # falha só apareceria como 401 lá na frente. Falhar aqui é mais claro.
+          if [ -z "$TOKEN" ]; then
+            echo "::error::GH_TOKEN ausente ou sem visibilidade neste repositório."
+            exit 1
+          fi
+
+          echo "name=${RAW_NAME:-$REPO}" >> "$GITHUB_OUTPUT"
+          echo "slug=${RAW_SLUG:-$REPO}" >> "$GITHUB_OUTPUT"
+
       - name: Disparar atualização na documentação
         uses: peter-evans/repository-dispatch@v4
         with:
           token: ${{ secrets.GH_TOKEN }}
           repository: ${{ inputs.docs-repository }}
           event-type: update-manual
-          client-payload: '{"org": "${{ github.repository_owner }}", "repo": "${{ github.event.repository.name }}", "name": "${{ inputs.friendly-name }}", "doc_file": "${{ inputs.doc-file }}"}'
+          client-payload: >-
+            {"org": "${{ github.repository_owner }}",
+             "repo": "${{ github.event.repository.name }}",
+             "slug": "${{ steps.ctx.outputs.slug }}",
+             "name": "${{ steps.ctx.outputs.name }}",
+             "doc_file": "${{ inputs.doc-file }}"}
