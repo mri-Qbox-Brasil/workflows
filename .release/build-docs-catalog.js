@@ -41,7 +41,10 @@ const SOURCE_OF = {
     mri_Qspawn: 'mri_Qspawn-source',
 }
 
-const ACRONYMS = new Set(['PS', 'CW', 'ND', 'CDN', 'MDT', 'PMA', 'RHD', 'IPL', 'UI', 'NPWD'])
+const ACRONYMS = new Set([
+    'PS', 'CW', 'ND', 'CDN', 'MDT', 'PMA', 'RHD', 'IPL', 'UI', 'NPWD',
+    'MM', 'ARS', 'LVC', 'FPS', 'HUD', 'NPC',
+])
 
 function friendlyName(repo) {
     // mri_Qbackpack -> "MRI Qbackpack". Preserva a capitalização depois do Q,
