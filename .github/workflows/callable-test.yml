@@ -1,0 +1,105 @@
+name: Callable — Test
+
+# Suíte de testes reutilizável. Dois eixos independentes, porque nem todo repo tem
+# os dois: `web-tests` roda o Vitest do pacote da NUI, `lua-tests` roda o harness
+# que executa o Lua real do resource sob wasmoon (sem servidor FiveM, sem MySQL).
+#
+# Sem `continue-on-error` em lugar nenhum: teste que não bloqueia merge é decoração.
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        type: string
+        default: '22'
+      pnpm-version:
+        type: string
+        default: '9'
+
+      web-dir:
+        description: 'Pacote da NUI'
+        type: string
+        default: 'web'
+      web-tests:
+        description: 'Habilita os testes do web (Vitest). Desabilitar em repos Lua-only.'
+        type: boolean
+        default: true
+
+      lua-tests:
+        description: 'Habilita os testes de Lua (harness wasmoon)'
+        type: boolean
+        default: false
+      lua-dir:
+        description: 'Pacote onde `pnpm test` roda os testes de Lua'
+        type: string
+        default: 'tests/lua'
+      lua-deps-dirs:
+        description: >
+          Pacotes locais a instalar ANTES do lua-dir, um por linha. Necessário quando o
+          harness é consumido via `link:`: o symlink aponta para um diretório que ainda
+          não tem node_modules, então o import não resolve sem instalar nele primeiro.
+        type: string
+        default: ''
+
+jobs:
+  test-web:
+    name: Test Web (Vitest)
+    if: ${{ inputs.web-tests }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: ${{ inputs.pnpm-version }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: 'pnpm'
+          cache-dependency-path: ${{ inputs.web-dir }}/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: ${{ inputs.web-dir }}
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Run tests
+        working-directory: ${{ inputs.web-dir }}
+        run: pnpm test
+
+  test-lua:
+    name: Test Lua (harness)
+    if: ${{ inputs.lua-tests }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: ${{ inputs.pnpm-version }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: 'pnpm'
+          cache-dependency-path: ${{ inputs.lua-dir }}/pnpm-lock.yaml
+
+      - name: Install local packages
+        if: ${{ inputs.lua-deps-dirs != '' }}
+        env:
+          DEPS_DIRS: ${{ inputs.lua-deps-dirs }}
+        run: |
+          echo "$DEPS_DIRS" | while IFS= read -r dir; do
+            [ -z "$dir" ] && continue
+            echo "::group::pnpm install em $dir"
+            (cd "$dir" && pnpm install --no-frozen-lockfile)
+            echo "::endgroup::"
+          done
+
+      - name: Install dependencies
+        working-directory: ${{ inputs.lua-dir }}
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Run tests
+        working-directory: ${{ inputs.lua-dir }}
+        run: pnpm test
