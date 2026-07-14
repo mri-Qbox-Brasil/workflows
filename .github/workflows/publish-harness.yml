@@ -1,0 +1,67 @@
+name: Publish — fivem-test-harness
+
+# Publica o @mriqbox/fivem-test-harness no npm publico (mesmo scope do @mriqbox/ui-kit).
+#
+# Deliberadamente NAO usa o semantic-release deste repo: aquele e configurado com
+# `pkgRoot: '.release'` e versiona o @mri-qbox-brasil/workflows (o CLI de build/release).
+# Sao dois pacotes com ciclos de vida diferentes — um bump no harness nao deve gerar
+# release da ferramenta de CI, nem o contrario.
+#
+# O gatilho e a VERSAO: sobe so quando o package.json aponta para uma versao que ainda
+# nao existe no registry. Bump de versao no PR = publicacao no merge. Sem tag, sem
+# ritual, e reexecutar o workflow e inofensivo (vira no-op).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/fivem-test-harness/**"
+      - ".github/workflows/publish-harness.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  group: publish-harness
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish no npm
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/fivem-test-harness
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      # O harness roda o Lua real sob wasmoon. Se ele nao carrega, nao adianta publicar.
+      - name: Smoke test — o harness inicia um estado Lua?
+        run: |
+          npm install --no-audit --no-fund
+          node -e "
+            import('./index.mjs').then(async ({ createHarness, luaValue }) => {
+              const lua = await createHarness({ seed: 'OK = 1 + 1' })
+              const v = await luaValue(lua, 'OK')
+              if (v !== 2) { console.error('harness nao avaliou Lua:', v); process.exit(1) }
+              console.log('harness OK — Lua avaliado sob wasmoon')
+            }).catch(e => { console.error(e); process.exit(1) })
+          "
+
+      - name: Publica se a versao ainda nao existe
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VER=$(node -p "require('./package.json').version")
+
+          if npm view "$NAME@$VER" version >/dev/null 2>&1; then
+            echo "$NAME@$VER ja esta publicado — nada a fazer."
+            exit 0
+          fi
+
+          echo "Publicando $NAME@$VER..."
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

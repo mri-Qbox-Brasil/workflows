@@ -1,0 +1,35 @@
+{
+    "name": "@mriqbox/fivem-test-harness",
+    "version": "0.1.0",
+    "description": "Roda o Lua real de um resource FiveM dentro do Node — sem servidor, sem MySQL. Stubs de exports/ox_lib/QBCore, natives de ACE com herança de principal, e um banco falso com dispatcher de SQL por match exato.",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/mri-Qbox-Brasil/workflows.git",
+        "directory": "packages/fivem-test-harness"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "type": "module",
+    "main": "index.mjs",
+    "exports": {
+        ".": "./index.mjs"
+    },
+    "files": [
+        "index.mjs",
+        "lua/",
+        "README.md"
+    ],
+    "keywords": [
+        "fivem",
+        "lua",
+        "wasmoon",
+        "qbcore",
+        "ox_lib",
+        "testing"
+    ],
+    "dependencies": {
+        "wasmoon": "^1.16.0"
+    }
+}
