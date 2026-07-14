@@ -171,6 +171,7 @@ congelar o arquivo vulnerável numa fixture e afirmar, num teste, que o bug aind
 | `AddPlayer(src, opts)` | Lua | Registra jogador online (`opts.money`, `opts.coords`, `opts.job`, …) |
 | `Callback(nome, src, ...)` | Lua | Invoca um `lib.callback` como a NUI faria |
 | `FireNetEvent(src, nome, ...)` | Lua | Dispara net event com o global `source` setado |
+| `FireStateBagChange(bag, chave, valor)` | Lua | Dispara os handlers de state bag capturados |
 | `AcesOf(principal)` / `NotificationsFor(src)` | Lua | Lê o estado efetivo |
 | `MoneyOf(src, tipo)` | Lua | Saldo depois de o core ter validado |
 | `LogMessages(categoria)` | Lua | Logs escritos — um log é uma *afirmação* de que algo ocorreu |
