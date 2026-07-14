@@ -36,11 +36,17 @@ NOTIFICATIONS     = {} -- { src, message, type }  (QBCore.Functions.Notify)
 LOGS              = {} -- { src, resource, category, level, message, data }  (AddLog)
 PLAYERS           = {} -- [src] = { citizenid, license, name, job, gang, identifiers }
 
+--- Zera TODO o estado observável. Se um dia entrar uma tabela nova de estado neste
+--- arquivo, ela entra aqui também — estado que sobrevive a um reset vaza de um teste
+--- para o outro, e o sintoma (um teste que só falha quando roda depois de outro) é dos
+--- mais caros de diagnosticar.
 function ResetRuntime()
     ACES, PRINCIPAL_PARENTS = {}, {}
     CALLBACKS, EVENTS, COMMANDS = {}, {}, {}
     CLIENT_EVENTS, NOTIFICATIONS, LOGS = {}, {}, {}
     PLAYERS, CONVARS = {}, {}
+    FROZEN_PEDS, ENTITY_COORDS = {}, {}
+    EXPORTS = {}
 end
 
 -- ─── ACEs e principals ────────────────────────────────────────────────────────
