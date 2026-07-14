@@ -11,21 +11,20 @@ name: Publish — fivem-test-harness
 # Ganho de brinde: `--provenance`. O npm assina e publica a atestacao de que o pacote
 # saiu deste commit, deste workflow. Quem instala pode verificar a origem.
 #
-# ─── o ovo e a galinha (por que NODE_AUTH_TOKEN ainda aparece aqui) ──────────
+# ─── nao ha token aqui, e nao pode haver ─────────────────────────────────────
 #
-# O npm NAO deixa publicar a PRIMEIRA versao de um pacote via OIDC: o trusted publisher
-# e configurado nas settings do pacote, e elas so existem depois que o pacote existe.
-# (npm/cli#8544.)
+# O npm nao deixa publicar a PRIMEIRA versao de um pacote via OIDC (o trusted publisher
+# e configurado nas settings do pacote, que so existem depois do pacote existir —
+# npm/cli#8544). A 0.1.0 subiu com token, uma vez, e o trusted publisher foi configurado
+# em seguida. Dai em diante: OIDC, sempre.
 #
-# Entao este workflow aceita os dois caminhos, e a transicao e automatica:
+# A tentativa de deixar os dois caminhos convivendo ("usa OIDC se tiver, senao o token")
+# NAO FUNCIONA, e a 0.1.1 falhou provando isso: com NODE_AUTH_TOKEN definido, o npm
+# autentica com ele e nem tenta o OIDC. Token presente ganha. Por isso o passo de publish
+# nao tem `env:` — deixar um token ali, ate vazio, quebra o trusted publishing.
 #
-#   1. Pacote ainda nao existe  -> `npm publish` cai no NODE_AUTH_TOKEN e cria o pacote.
-#   2. Alguem configura o trusted publisher em npmjs.com (uma vez, na mao).
-#   3. Das proximas vezes  -> o npm ve o OIDC e IGNORA o token.
-#   4. O secret NPM_TOKEN pode ser APAGADO. Este workflow continua funcionando.
-#
-# O passo 4 e o objetivo. O token e andaime, nao fundacao — apague assim que o passo 2
-# estiver feito.
+# Se um dia isto voltar a falhar com 404 no PUT, o suspeito numero um e alguem ter
+# reintroduzido um NODE_AUTH_TOKEN.
 
 on:
   push:
@@ -89,7 +88,14 @@ jobs:
 
           echo "Publicando $NAME@$VER..."
           npm publish --access public --provenance
-        env:
-          # Andaime: usado SO enquanto o trusted publisher nao estiver configurado.
-          # Com o OIDC ativo o npm ignora esta variavel — e o secret pode ser apagado.
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        # SEM `env: NODE_AUTH_TOKEN`. E deliberado, e custou um publish falho para
+        # aprender: token presente GANHA do OIDC. Nao "convivem".
+        #
+        # A 0.1.1 falhou com `404 - PUT .../@mriqbox%2ffivem-test-harness` mesmo com o
+        # trusted publisher ja configurado. O secret ainda estava aqui (com o valor de um
+        # token ja revogado), o npm autenticou com ele em vez de tentar o OIDC, e o
+        # registry devolveu 404 — que e o que ele responde para credencial invalida.
+        #
+        # O sinal que denunciou: a provenance FOI assinada (isso usa o OIDC do sigstore,
+        # entao `id-token: write` estava certo) e mesmo assim o PUT foi recusado. Duas
+        # autenticacoes diferentes, so uma quebrada.
