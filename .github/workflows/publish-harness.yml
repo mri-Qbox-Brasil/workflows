@@ -2,14 +2,30 @@ name: Publish — fivem-test-harness
 
 # Publica o @mriqbox/fivem-test-harness no npm publico (mesmo scope do @mriqbox/ui-kit).
 #
-# Deliberadamente NAO usa o semantic-release deste repo: aquele e configurado com
-# `pkgRoot: '.release'` e versiona o @mri-qbox-brasil/workflows (o CLI de build/release).
-# Sao dois pacotes com ciclos de vida diferentes — um bump no harness nao deve gerar
-# release da ferramenta de CI, nem o contrario.
+# ─── autenticacao: trusted publishing (OIDC), sem token ──────────────────────
 #
-# O gatilho e a VERSAO: sobe so quando o package.json aponta para uma versao que ainda
-# nao existe no registry. Bump de versao no PR = publicacao no merge. Sem tag, sem
-# ritual, e reexecutar o workflow e inofensivo (vira no-op).
+# O runner prova quem e para o npm via OIDC do proprio GitHub — o npm confere que o
+# request veio DESTE repo, DESTE workflow, e so entao aceita. Nao ha segredo de longa
+# duracao para vazar, e um token roubado nao serve para nada porque nao existe token.
+#
+# Ganho de brinde: `--provenance`. O npm assina e publica a atestacao de que o pacote
+# saiu deste commit, deste workflow. Quem instala pode verificar a origem.
+#
+# ─── o ovo e a galinha (por que NODE_AUTH_TOKEN ainda aparece aqui) ──────────
+#
+# O npm NAO deixa publicar a PRIMEIRA versao de um pacote via OIDC: o trusted publisher
+# e configurado nas settings do pacote, e elas so existem depois que o pacote existe.
+# (npm/cli#8544.)
+#
+# Entao este workflow aceita os dois caminhos, e a transicao e automatica:
+#
+#   1. Pacote ainda nao existe  -> `npm publish` cai no NODE_AUTH_TOKEN e cria o pacote.
+#   2. Alguem configura o trusted publisher em npmjs.com (uma vez, na mao).
+#   3. Das proximas vezes  -> o npm ve o OIDC e IGNORA o token.
+#   4. O secret NPM_TOKEN pode ser APAGADO. Este workflow continua funcionando.
+#
+# O passo 4 e o objetivo. O token e andaime, nao fundacao — apague assim que o passo 2
+# estiver feito.
 
 on:
   push:
@@ -27,6 +43,9 @@ jobs:
   publish:
     name: Publish no npm
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # OIDC: e isto que dispensa o token
     defaults:
       run:
         working-directory: packages/fivem-test-harness
@@ -35,8 +54,15 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          # Trusted publishing exige Node >= 22.14 e npm >= 11.5.1.
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+
+      - name: Garante npm >= 11.5.1 (requisito do OIDC)
+        run: |
+          npm install -g npm@latest
+          echo "npm $(npm --version) / node $(node --version)"
 
       # O harness roda o Lua real sob wasmoon. Se ele nao carrega, nao adianta publicar.
       - name: Smoke test — o harness inicia um estado Lua?
@@ -62,6 +88,8 @@ jobs:
           fi
 
           echo "Publicando $NAME@$VER..."
-          npm publish --access public
+          npm publish --access public --provenance
         env:
+          # Andaime: usado SO enquanto o trusted publisher nao estiver configurado.
+          # Com o OIDC ativo o npm ignora esta variavel — e o secret pode ser apagado.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
