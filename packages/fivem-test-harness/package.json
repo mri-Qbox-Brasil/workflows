@@ -1,6 +1,6 @@
 {
     "name": "@mriqbox/fivem-test-harness",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "Roda o Lua real de um resource FiveM dentro do Node — sem servidor, sem MySQL. Stubs de exports/ox_lib/QBCore, natives de ACE com herança de principal, e um banco falso com dispatcher de SQL por match exato.",
     "license": "MIT",
     "repository": {
