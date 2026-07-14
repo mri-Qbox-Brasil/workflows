@@ -46,7 +46,7 @@ function ResetRuntime()
     CLIENT_EVENTS, NOTIFICATIONS, LOGS = {}, {}, {}
     PLAYERS, CONVARS = {}, {}
     FROZEN_PEDS, ENTITY_COORDS = {}, {}
-    EXPORTS = {}
+    EXPORTS, STATE_BAG_HANDLERS = {}, {}
 end
 
 -- ─── ACEs e principals ────────────────────────────────────────────────────────
@@ -263,7 +263,38 @@ function TriggerClientEvent(name, target, ...)
     CLIENT_EVENTS[#CLIENT_EVENTS + 1] = { name = name, target = target, args = { ... } }
 end
 
--- ─── threads ──────────────────────────────────────────────────────────────────
+-- ─── state bags ───────────────────────────────────────────────────────────────
+--
+-- Um resource registra o handler no LOAD do arquivo (topo, fora de função). Sem este
+-- stub, o arquivo inteiro não carrega — "attempt to call a nil value" — e nada dele
+-- pode ser testado, nem o que não tem relação nenhuma com state bag.
+--
+-- O handler fica capturado em STATE_BAG_HANDLERS para o teste poder dispará-lo, do
+-- mesmo jeito que os callbacks e os eventos se auto-capturam.
+
+STATE_BAG_HANDLERS = {} -- { keyFilter, bagFilter, fn }
+
+function AddStateBagChangeHandler(keyFilter, bagFilter, fn)
+    STATE_BAG_HANDLERS[#STATE_BAG_HANDLERS + 1] = {
+        keyFilter = keyFilter, bagFilter = bagFilter, fn = fn,
+    }
+    return #STATE_BAG_HANDLERS -- o native devolve um cookie
+end
+
+function RemoveStateBagChangeHandler(cookie)
+    STATE_BAG_HANDLERS[cookie] = nil
+end
+
+--- Dispara os handlers que casam com a chave. `bagName` é o que o FiveM passa:
+--- 'player:1', 'entity:123'. O filtro nil casa com tudo, como no native.
+function FireStateBagChange(bagName, key, value)
+    for _, h in pairs(STATE_BAG_HANDLERS) do
+        if (h.keyFilter == nil or h.keyFilter == key)
+            and (h.bagFilter == nil or h.bagFilter == bagName) then
+            h.fn(bagName, key, value)
+        end
+    end
+end
 -- Síncrono de propósito. Ver o aviso no topo do arquivo.
 
 function CreateThread(fn) fn() end
