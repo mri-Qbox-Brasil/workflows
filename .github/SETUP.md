@@ -28,7 +28,7 @@ Este guia descreve como configurar um repositório de script FiveM para usar os 
 
 ## 3. Workflows — uso nos repositórios de script
 
-### Release
+### Release (repo único, auto-liberado)
 
 ```yaml
 jobs:
@@ -37,6 +37,29 @@ jobs:
     secrets:
       GH_TOKEN: ${{ secrets.GH_TOKEN }}
 ```
+
+### Mirror Release (fonte privada → espelho público built-only)
+
+Roda no repo de **fonte privada** (`<resource>-source`) e publica o resource
+buildado (Lua + `web/build`, **sem** o fonte da UI) no repo **público**. Exige
+`version '__VERSION__'` no `fxmanifest.lua` (a versão é injetada só no build,
+nunca commitada de volta).
+
+```yaml
+jobs:
+  release:
+    uses: mri-Qbox-Brasil/workflows/.github/workflows/callable-mirror-release.yml@main
+    secrets: inherit
+    with:
+      public-repo: mri-Qbox-Brasil/mri_Qdoorlock   # espelho público
+      # web-path: web                              # opcional (default: web)
+      # resource-name: mri_Qdoorlock               # opcional (default: nome do public-repo)
+      # public-readme: README.md                   # opcional (use MANUAL.md p/ publicar o manual)
+```
+
+O `GH_TOKEN` precisa de **Contents R&W** no source **e** no público (o
+espelhamento faz `push` no público) e **Packages Read** (instala
+`@mri-qbox-brasil/workflows`).
 
 ### Recipe Release (repos de receita txAdmin)
 

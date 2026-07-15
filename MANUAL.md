@@ -7,10 +7,18 @@ Este repositório fornece workflows reutilizáveis (`workflow_call`) e o pacote 
 ## Callables disponíveis
 
 ### `callable-release.yml`
-Executa build do recurso FiveM e cria release semântico no GitHub.
+Executa build do recurso FiveM e cria release semântico no GitHub. Modelo de **repo único** que se auto-libera (fonte e artefato no mesmo repo).
 
-**Inputs:** `node-version` (default: `20`)
-**Secrets:** `GH_TOKEN` (required)
+**Inputs:** `node-version` (default: `20`), `web-path` (default: `web`)
+**Secrets:** `GH_TOKEN` (required); `GH_MODELS_TOKEN`, `UPDATE_DISCORD_WEBHOOK`, `LOGO_MRIQBOX_URL`, `RESOURCE_MRIQBOX_URL`, `INVITE_DISCORD_URL`, `DOCS_MRIQBOX_URL` (opcionais)
+
+### `callable-mirror-release.yml`
+Release no modelo **fonte privada → espelho público built-only**. Roda no repo de fonte privada (`<resource>-source`): calcula a versão por commits, injeta no `fxmanifest.lua` (placeholder `__VERSION__`) via `workflows set-version`, builda o front e empacota o resource com `workflows build` (sem o fonte da UI), sincroniza o resource buildado para o repo **público** e cria a release pública com o zip. Não expõe o fonte no público. Notifica o Discord (opcional, apontando à release pública).
+
+**Inputs:** `public-repo` (required, `owner/repo` do espelho público), `resource-name` (default: nome do `public-repo`), `web-path` (default: `web`), `public-readme` (default: `README.md`), `node-version` (default: `20`)
+**Secrets:** `GH_TOKEN` (required — Contents R&W no source **e** no público, Packages Read); `GH_MODELS_TOKEN`, `UPDATE_DISCORD_WEBHOOK`, `LOGO_MRIQBOX_URL`, `RESOURCE_MRIQBOX_URL`, `INVITE_DISCORD_URL`, `DOCS_MRIQBOX_URL` (opcionais)
+
+**Requisitos no repo de fonte:** `fxmanifest.lua` com `version '__VERSION__'`; front em `web-path` com script `build` (saída em `web/build` ou output separado como `html/`); commits em Conventional Commits.
 
 ### `callable-recipe-release.yml`
 Release para repos de **receita** do txAdmin (ex.: `mriTxRecipe`). Sem build de resource: roda semantic-release e, quando publica versão, empacota os arquivos de `.release-files.json` num zip e sobe para o S3/R2.
