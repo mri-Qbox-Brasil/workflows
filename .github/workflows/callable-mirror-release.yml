@@ -67,10 +67,27 @@ jobs:
       packages: read
 
     steps:
+      # Checkout do source com o GITHUB_TOKEN nativo: ele sempre tem acesso ao
+      # proprio repo (e permissao contents:write para o commit/tag de release do
+      # semantic-release). O GH_TOKEN so e necessario para operar no repo
+      # PUBLICO (clone/push/release), nas etapas de sync mais abaixo.
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          token: ${{ secrets.GH_TOKEN }}
+          token: ${{ github.token }}
+
+      # Diagnostico: confirma se o GH_TOKEN esta chegando via secrets: inherit.
+      # Sem ele, o sync para o repo publico falha. Nao imprime o valor.
+      - name: Verifica GH_TOKEN
+        env:
+          GH: ${{ secrets.GH_TOKEN }}
+        run: |
+          if [ -z "$GH" ]; then
+            echo "::warning::GH_TOKEN vazio/nao entregue. O sync para o repo publico vai falhar."
+            echo "GH_TOKEN: VAZIO"
+          else
+            echo "GH_TOKEN: presente"
+          fi
 
       - uses: actions/setup-node@v6
         with:
