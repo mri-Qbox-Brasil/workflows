@@ -122,8 +122,8 @@ jobs:
       # checkout do resource chamador, nao deste repositorio de workflows.
       - name: Prepara notificador de release
         run: |
-          mkdir -p .ci
-          cat > .ci/discord-release.js << 'EOF'
+          mkdir -p .release
+          cat > .release/discord-release.js << 'EOF'
           'use strict';
 
           const webhook = process.env.DISCORD_RELEASE_WEBHOOK;
@@ -246,7 +246,7 @@ jobs:
 
       - name: Release (source privado)
         run: |
-          cat > .release.config.cjs << 'EOF'
+          mkdir -p .release && cat > .release/release.config.cjs << 'EOF'
           module.exports = {
             branches: ['main'],
             plugins: [
@@ -271,7 +271,7 @@ jobs:
             ]
           };
           EOF
-          npx semantic-release --extends ./.release.config.cjs
+          npx semantic-release --extends ./.release/release.config.cjs
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.GH_TOKEN }}
@@ -334,7 +334,7 @@ jobs:
 
       - name: Notifica Discord
         if: steps.meta.outputs.PUBLISHED == 'true'
-        run: node .ci/discord-release.js "${{ steps.meta.outputs.VERSION }}"
+        run: node .release/discord-release.js "${{ steps.meta.outputs.VERSION }}"
         env:
           # Aponta o embed a release publica (a visivel aos usuarios).
           NOTIFY_REPO: ${{ inputs.public-repo }}
