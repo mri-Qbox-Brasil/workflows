@@ -28,6 +28,19 @@ if [ -d "$WEB_DIR" ]; then
   cd ..
 fi
 
+# Exclusoes extras por-resource: cada linha do .releaseignore (na raiz do
+# resource) vira um --exclude do rsync. Aceita # como comentario e ignora
+# linhas vazias. Backward-compatible: sem o arquivo, nada muda.
+EXTRA_EXCLUDES=()
+if [ -f ".releaseignore" ]; then
+  echo "Aplicando exclusoes de .releaseignore..."
+  while IFS= read -r raw || [ -n "$raw" ]; do
+    line="$(printf '%s' "$raw" | sed 's/#.*//; s/^[[:space:]]*//; s/[[:space:]]*$//')"
+    [ -z "$line" ] && continue
+    EXTRA_EXCLUDES+=( --exclude="$line" )
+  done < .releaseignore
+fi
+
 # Copia arquivos relevantes
 echo "Copiando arquivos..."
 rsync -av \
@@ -42,6 +55,7 @@ rsync -av \
   --exclude="node_modules" \
   --exclude="dist" \
   --exclude="$WEB_DIR" \
+  "${EXTRA_EXCLUDES[@]}" \
   . "dist/$SCRIPT_NAME"
 
 # Copia apenas o output do build web
