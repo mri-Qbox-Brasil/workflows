@@ -36,10 +36,31 @@ on:
       node-version:
         type: string
         default: '20'
+      # Config do Infisical (fonte central de secrets via OIDC). NADA aqui e
+      # secret: o Identity ID e so um identificador — a auth exige o JWT OIDC do
+      # Actions casar com a trust condition (claim job_workflow_ref) da identity.
+      infisical-domain:
+        type: string
+        default: 'https://secrets.mriqbox.com.br'
+      infisical-identity:
+        type: string
+        default: 'efec2ffe-55d0-479d-9535-8da6b0ea4665'
+      infisical-project:
+        type: string
+        default: 'github-releases-k1-qq'
+      infisical-env:
+        type: string
+        default: 'prod'
+      # Audience do JWT OIDC. Fixado explicitamente (nao confiar na default da
+      # action) e DEVE bater com o campo "Audiences" da identity no Infisical.
+      infisical-audience:
+        type: string
+        default: 'https://github.com/mri-Qbox-Brasil'
     secrets:
       # PAT da org com Contents R&W no source E no publico, e Packages Read.
+      # Agora opcional: com o Infisical vem por OIDC. Aceito como fallback.
       GH_TOKEN:
-        required: true
+        required: false
       # PAT (conta pessoal) com escopo `models` para o GitHub Models. Sem ele,
       # cai no GH_TOKEN e usa as notas cruas.
       GH_MODELS_TOKEN:
@@ -65,8 +86,27 @@ jobs:
       issues: write
       pull-requests: write
       packages: read
+      # OIDC: emite o JWT que o Infisical troca pelos secrets. ATENCAO: por ser
+      # reusable workflow, o JOB CHAMADOR (wrapper release.yml do source) TAMBEM
+      # precisa declarar `id-token: write` — senao o token nao e concedido aqui.
+      id-token: write
 
     steps:
+      # Puxa os secrets do Infisical via OIDC (fonte central). Nao-fatal: se o
+      # Infisical estiver fora, o passo falha mas o workflow segue e cai no
+      # fallback `secrets.*` (padrao `env.X || secrets.X`) nos consumidores.
+      - name: Secrets via Infisical (OIDC)
+        id: infisical
+        continue-on-error: true
+        uses: Infisical/secrets-action@v1.0.16
+        with:
+          method: oidc
+          domain: ${{ inputs.infisical-domain }}
+          identity-id: ${{ inputs.infisical-identity }}
+          project-slug: ${{ inputs.infisical-project }}
+          env-slug: ${{ inputs.infisical-env }}
+          oidc-audience: ${{ inputs.infisical-audience }}
+
       # Checkout do source com o GITHUB_TOKEN nativo: ele sempre tem acesso ao
       # proprio repo (e permissao contents:write para o commit/tag de release do
       # semantic-release). O GH_TOKEN so e necessario para operar no repo
@@ -80,7 +120,7 @@ jobs:
       # Sem ele, o sync para o repo publico falha. Nao imprime o valor.
       - name: Verifica GH_TOKEN
         env:
-          GH: ${{ secrets.GH_TOKEN }}
+          GH: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
         run: |
           if [ -z "$GH" ]; then
             echo "::warning::GH_TOKEN vazio/nao entregue. O sync para o repo publico vai falhar."
@@ -107,7 +147,7 @@ jobs:
             @semantic-release/git \
             @semantic-release/github
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GH_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
 
       - name: Resolve resource name
         id: rn
@@ -145,8 +185,8 @@ jobs:
           EOF
           npx semantic-release --extends ./.release/release.config.cjs
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
           WEB_PATH: ${{ inputs.web-path }}
           RESOURCE_NAME: ${{ steps.rn.outputs.name }}
 
@@ -171,7 +211,7 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git clone "https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${PUBLIC_REPO}.git" public_repo
+          git clone "https://x-access-token:${{ env.GH_TOKEN || secrets.GH_TOKEN }}@github.com/${PUBLIC_REPO}.git" public_repo
 
           # Limpa conteudo antigo (preserva .git)
           find public_repo -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
@@ -208,7 +248,7 @@ jobs:
           name: v${{ steps.meta.outputs.VERSION }}
           body_path: .NOTES.md
           files: dist/${{ steps.rn.outputs.name }}.zip
-          token: ${{ secrets.GH_TOKEN }}
+          token: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
           make_latest: true
 
       # Dispara a notificacao do Discord no PUBLICO explicitamente. Nao dependemos
@@ -217,7 +257,8 @@ jobs:
       - name: Dispara notificacao no publico
         if: steps.meta.outputs.PUBLISHED == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          # GH_TOKEN vem do Infisical (exportado como env) ou cai no secret.
+          GH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
         run: |
           gh workflow run release-notify.yml \
             --repo "${{ inputs.public-repo }}" \

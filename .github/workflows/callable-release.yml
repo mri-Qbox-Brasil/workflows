@@ -12,9 +12,32 @@ on:
       web-path:
         type: string
         default: 'web'
+      # Config do Infisical (fonte central de secrets via OIDC). NADA aqui e
+      # secret: o Identity ID e so um identificador — a auth exige o JWT OIDC do
+      # Actions casar com a trust condition (claim job_workflow_ref) da identity.
+      # Por isso os resources chamadores nao precisam guardar secret nenhum.
+      infisical-domain:
+        type: string
+        default: 'https://secrets.mriqbox.com.br'
+      infisical-identity:
+        type: string
+        default: 'efec2ffe-55d0-479d-9535-8da6b0ea4665'
+      infisical-project:
+        type: string
+        default: 'github-releases-k1-qq'
+      infisical-env:
+        type: string
+        default: 'prod'
+      # Audience do JWT OIDC. Fixado explicitamente (nao confiar na default da
+      # action) e DEVE bater com o campo "Audiences" da identity no Infisical.
+      infisical-audience:
+        type: string
+        default: 'https://github.com/mri-Qbox-Brasil'
     secrets:
+      # Agora opcional: com o Infisical o token vem por OIDC. Continua aceito como
+      # fallback (secrets: inherit) enquanto a migracao nao termina.
       GH_TOKEN:
-        required: true
+        required: false
       # PAT (conta pessoal) com escopo `models` para o GitHub Models. Sem ele,
       # cai no GITHUB_TOKEN (que dá 403 em org free) e usa as notas cruas.
       GH_MODELS_TOKEN:
@@ -43,12 +66,32 @@ jobs:
       packages: write
       # Necessário para o GitHub Models (geração da descrição via IA).
       models: read
+      # OIDC: emite o JWT que o Infisical troca pelos secrets. ATENCAO: por ser
+      # reusable workflow, o JOB CHAMADOR (wrapper release.yml do resource) TAMBEM
+      # precisa declarar `id-token: write` — senao o token nao e concedido aqui.
+      id-token: write
 
     steps:
+      # Puxa os secrets do Infisical via OIDC (fonte central). Nao-fatal: se o
+      # Infisical estiver fora/instavel, este passo falha mas o workflow segue e
+      # cai no fallback `secrets.*` (padrao `env.X || secrets.X`) nos consumidores.
+      # Exporta cada secret do projeto/env como variavel de ambiente mascarada.
+      - name: Secrets via Infisical (OIDC)
+        id: infisical
+        continue-on-error: true
+        uses: Infisical/secrets-action@v1.0.16
+        with:
+          method: oidc
+          domain: ${{ inputs.infisical-domain }}
+          identity-id: ${{ inputs.infisical-identity }}
+          project-slug: ${{ inputs.infisical-project }}
+          env-slug: ${{ inputs.infisical-env }}
+          oidc-audience: ${{ inputs.infisical-audience }}
+
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          token: ${{ secrets.GH_TOKEN }}
+          token: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
 
       - uses: actions/setup-node@v6
         with:
@@ -68,7 +111,7 @@ jobs:
             @semantic-release/git \
             @semantic-release/github
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GH_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
 
       # Notificador de release para o Discord. Fica inline (não num arquivo do
       # repo) porque a callable roda no checkout do resource chamador, não deste
@@ -239,20 +282,22 @@ jobs:
           EOF
           npx semantic-release --extends ./.release.config.cjs
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.GH_TOKEN }}
+          # Padrao `env.X || secrets.X`: usa o valor vindo do Infisical (exportado
+          # como env pelo passo OIDC); se ausente (Infisical fora), cai no secret.
+          GITHUB_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
           # Diretorio do front, consumido pelo set-version, build e git assets.
           WEB_PATH: ${{ inputs.web-path }}
           # Token para o GitHub Models (acesso é por identidade da conta, não por
           # escopo). Prefere um PAT dedicado; senão usa o GH_TOKEN (PAT pessoal do
           # release); em último caso o GITHUB_TOKEN (403 em org free -> notas cruas).
-          GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN || secrets.GH_TOKEN || github.token }}
+          GH_MODELS_TOKEN: ${{ env.GH_MODELS_TOKEN || secrets.GH_MODELS_TOKEN || env.GH_TOKEN || secrets.GH_TOKEN || github.token }}
           LLM_MODEL: ${{ vars.LLM_MODEL }}
           # Notificação de release no Discord (todas opcionais).
           # Kill switch por repo: var DISCORD_RELEASE_NOTIFY=false desliga.
           DISCORD_RELEASE_NOTIFY: ${{ vars.DISCORD_RELEASE_NOTIFY }}
-          DISCORD_RELEASE_WEBHOOK: ${{ secrets.UPDATE_DISCORD_WEBHOOK }}
-          LOGO_MRIQBOX_URL: ${{ secrets.LOGO_MRIQBOX_URL }}
-          RESOURCE_MRIQBOX_URL: ${{ secrets.RESOURCE_MRIQBOX_URL }}
-          INVITE_DISCORD_URL: ${{ secrets.INVITE_DISCORD_URL }}
-          DOCS_MRIQBOX_URL: ${{ secrets.DOCS_MRIQBOX_URL }}
+          DISCORD_RELEASE_WEBHOOK: ${{ env.UPDATE_DISCORD_WEBHOOK || secrets.UPDATE_DISCORD_WEBHOOK }}
+          LOGO_MRIQBOX_URL: ${{ env.LOGO_MRIQBOX_URL || secrets.LOGO_MRIQBOX_URL }}
+          RESOURCE_MRIQBOX_URL: ${{ env.RESOURCE_MRIQBOX_URL || secrets.RESOURCE_MRIQBOX_URL }}
+          INVITE_DISCORD_URL: ${{ env.INVITE_DISCORD_URL || secrets.INVITE_DISCORD_URL }}
+          DOCS_MRIQBOX_URL: ${{ env.DOCS_MRIQBOX_URL || secrets.DOCS_MRIQBOX_URL }}

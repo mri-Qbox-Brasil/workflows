@@ -9,19 +9,58 @@ on:
       pr-team:
         type: string
         default: ''
+      # Config do Infisical (fonte central de secrets via OIDC). Nada aqui e
+      # secret: o Identity ID e so um identificador — a auth exige o JWT OIDC do
+      # Actions casar com a trust condition (repository_owner) da identity.
+      infisical-domain:
+        type: string
+        default: 'https://secrets.mriqbox.com.br'
+      infisical-identity:
+        type: string
+        default: 'efec2ffe-55d0-479d-9535-8da6b0ea4665'
+      infisical-project:
+        type: string
+        default: 'github-releases-k1-qq'
+      infisical-env:
+        type: string
+        default: 'prod'
+      infisical-audience:
+        type: string
+        default: 'https://github.com/mri-Qbox-Brasil'
     secrets:
+      # Agora opcional: com o Infisical vem por OIDC. Aceito como fallback.
       GH_TOKEN:
-        required: true
+        required: false
 
 jobs:
   update-actions:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      # OIDC: emite o JWT que o Infisical troca pelos secrets. O wrapper chamador
+      # do resource TAMBEM precisa de `id-token: write`.
+      id-token: write
 
     steps:
+      # Puxa os secrets do Infisical via OIDC (fonte central). Nao-fatal: cai no
+      # fallback secrets.* se o Infisical estiver fora.
+      - name: Secrets via Infisical (OIDC)
+        id: infisical
+        continue-on-error: true
+        uses: Infisical/secrets-action@v1.0.16
+        with:
+          method: oidc
+          domain: ${{ inputs.infisical-domain }}
+          identity-id: ${{ inputs.infisical-identity }}
+          project-slug: ${{ inputs.infisical-project }}
+          env-slug: ${{ inputs.infisical-env }}
+          oidc-audience: ${{ inputs.infisical-audience }}
+
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          token: ${{ secrets.GH_TOKEN }}
+          token: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
 
       - uses: actions/setup-node@v6
         with:
@@ -32,10 +71,10 @@ jobs:
       - name: Install workflows
         run: npm install --no-save @mri-qbox-brasil/workflows
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GH_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
 
       - name: Run update
         run: npx workflows update-actions
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
           PR_TEAM: ${{ inputs.pr-team }}

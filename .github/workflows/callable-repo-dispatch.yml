@@ -30,21 +30,58 @@ on:
       docs-repository:
         type: string
         default: 'mri-Qbox-Brasil/docs-mriqbox'
+      # Config do Infisical (fonte central de secrets via OIDC). Nada aqui e
+      # secret: o Identity ID e so um identificador — a auth exige o JWT OIDC do
+      # Actions casar com a trust condition (repository_owner) da identity.
+      infisical-domain:
+        type: string
+        default: 'https://secrets.mriqbox.com.br'
+      infisical-identity:
+        type: string
+        default: 'efec2ffe-55d0-479d-9535-8da6b0ea4665'
+      infisical-project:
+        type: string
+        default: 'github-releases-k1-qq'
+      infisical-env:
+        type: string
+        default: 'prod'
+      infisical-audience:
+        type: string
+        default: 'https://github.com/mri-Qbox-Brasil'
     secrets:
+      # Agora opcional: com o Infisical vem por OIDC. Aceito como fallback.
       GH_TOKEN:
-        required: true
+        required: false
 
 jobs:
   notify-docs:
     runs-on: ubuntu-latest
+    permissions:
+      # OIDC: emite o JWT que o Infisical troca pelos secrets. O wrapper chamador
+      # do resource TAMBEM precisa de `id-token: write`.
+      id-token: write
     steps:
+      # Puxa os secrets do Infisical via OIDC (fonte central). Nao-fatal: cai no
+      # fallback secrets.* se o Infisical estiver fora.
+      - name: Secrets via Infisical (OIDC)
+        id: infisical
+        continue-on-error: true
+        uses: Infisical/secrets-action@v1.0.16
+        with:
+          method: oidc
+          domain: ${{ inputs.infisical-domain }}
+          identity-id: ${{ inputs.infisical-identity }}
+          project-slug: ${{ inputs.infisical-project }}
+          env-slug: ${{ inputs.infisical-env }}
+          oidc-audience: ${{ inputs.infisical-audience }}
+
       - name: Resolver nome e slug
         id: ctx
         env:
           RAW_NAME: ${{ inputs.friendly-name }}
           RAW_SLUG: ${{ inputs.publish-as }}
           REPO: ${{ github.event.repository.name }}
-          TOKEN: ${{ secrets.GH_TOKEN }}
+          TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
         run: |
           # Um secret ausente chega como string vazia (o GitHub não aborta), e a
           # falha só apareceria como 401 lá na frente. Falhar aqui é mais claro.
@@ -59,7 +96,7 @@ jobs:
       - name: Disparar atualização na documentação
         uses: peter-evans/repository-dispatch@v4
         with:
-          token: ${{ secrets.GH_TOKEN }}
+          token: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
           repository: ${{ inputs.docs-repository }}
           event-type: update-manual
           client-payload: >-
