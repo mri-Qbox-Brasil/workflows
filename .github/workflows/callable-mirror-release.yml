@@ -210,3 +210,15 @@ jobs:
           files: dist/${{ steps.rn.outputs.name }}.zip
           token: ${{ secrets.GH_TOKEN }}
           make_latest: true
+
+      # Dispara a notificacao do Discord no PUBLICO explicitamente. Nao dependemos
+      # do evento release:published (que nao dispara quando a release e criada por
+      # token) — o workflow_dispatch sempre roda, e la o secret de org funciona.
+      - name: Dispara notificacao no publico
+        if: steps.meta.outputs.PUBLISHED == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          gh workflow run release-notify.yml \
+            --repo "${{ inputs.public-repo }}" \
+            -f version="v${{ steps.meta.outputs.VERSION }}" || echo "dispatch da notificacao falhou (nao fatal)"
