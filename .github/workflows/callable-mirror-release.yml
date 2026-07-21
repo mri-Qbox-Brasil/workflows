@@ -207,11 +207,14 @@ jobs:
           RESOURCE_NAME: ${{ steps.rn.outputs.name }}
           PUBLIC_REPO: ${{ inputs.public-repo }}
           PUBLIC_README: ${{ inputs.public-readme }}
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          # Prefere o GH_TOKEN do Infisical (exportado como env); cai no secret.
+          # NAO usar so secrets.GH_TOKEN aqui: sobrescreveria o do Infisical com
+          # vazio (era o bug que quebrava o clone do repo publico).
+          GH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git clone "https://x-access-token:${{ env.GH_TOKEN || secrets.GH_TOKEN }}@github.com/${PUBLIC_REPO}.git" public_repo
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${PUBLIC_REPO}.git" public_repo
 
           # Limpa conteudo antigo (preserva .git)
           find public_repo -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
