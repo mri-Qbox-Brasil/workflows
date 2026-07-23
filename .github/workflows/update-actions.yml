@@ -15,8 +15,11 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GH_TOKEN }}
 
+      - name: Torna o script executavel
+        run: chmod +x .release/update-actions.sh
+
       - name: Run update script
-        run: chmod +x .release/update-actions.sh && ./.release/update-actions.sh
+        run: ./.release/update-actions.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           PR_TEAM: ${{ vars.PR_TEAM }}

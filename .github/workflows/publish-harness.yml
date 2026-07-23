@@ -59,14 +59,17 @@ jobs:
           package-manager-cache: false
 
       - name: Garante npm >= 11.5.1 (requisito do OIDC)
-        run: |
-          npm install -g npm@latest
-          echo "npm $(npm --version) / node $(node --version)"
+        run: npm install -g npm@latest
+
+      - name: Versoes de node/npm
+        run: echo "npm $(npm --version) / node $(node --version)"
+
+      - name: Instala as dependencias do harness
+        run: npm install --no-audit --no-fund
 
       # O harness roda o Lua real sob wasmoon. Se ele nao carrega, nao adianta publicar.
       - name: Smoke test — o harness inicia um estado Lua?
         run: |
-          npm install --no-audit --no-fund
           node -e "
             import('./index.mjs').then(async ({ createHarness, luaValue }) => {
               const lua = await createHarness({ seed: 'OK = 1 + 1' })
@@ -76,18 +79,29 @@ jobs:
             }).catch(e => { console.error(e); process.exit(1) })
           "
 
-      - name: Publica se a versao ainda nao existe
+      - name: Le nome e versao do pacote
+        id: pkg
         run: |
-          NAME=$(node -p "require('./package.json').name")
-          VER=$(node -p "require('./package.json').version")
+          echo "name=$(node -p "require('./package.json').name")" >> "$GITHUB_OUTPUT"
+          echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
 
+      - name: Verifica se a versao ja esta publicada
+        id: published
+        env:
+          NAME: ${{ steps.pkg.outputs.name }}
+          VER: ${{ steps.pkg.outputs.version }}
+        run: |
           if npm view "$NAME@$VER" version >/dev/null 2>&1; then
             echo "$NAME@$VER ja esta publicado — nada a fazer."
-            exit 0
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "$NAME@$VER ainda nao existe no registry."
+            echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-          echo "Publicando $NAME@$VER..."
-          npm publish --access public --provenance
+      - name: Publica no npm
+        if: steps.published.outputs.exists == 'false'
+        run: npm publish --access public --provenance
         # SEM `env: NODE_AUTH_TOKEN`. E deliberado, e custou um publish falho para
         # aprender: token presente GANHA do OIDC. Nao "convivem".
         #

@@ -75,21 +75,24 @@ jobs:
           env-slug: ${{ inputs.infisical-env }}
           oidc-audience: ${{ inputs.infisical-audience }}
 
+      # Um secret ausente chega como string vazia (o GitHub não aborta), e a
+      # falha só apareceria como 401 lá na frente. Falhar aqui é mais claro.
+      - name: Validar GH_TOKEN
+        env:
+          TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::GH_TOKEN ausente ou sem visibilidade neste repositório."
+            exit 1
+          fi
+
       - name: Resolver nome e slug
         id: ctx
         env:
           RAW_NAME: ${{ inputs.friendly-name }}
           RAW_SLUG: ${{ inputs.publish-as }}
           REPO: ${{ github.event.repository.name }}
-          TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
         run: |
-          # Um secret ausente chega como string vazia (o GitHub não aborta), e a
-          # falha só apareceria como 401 lá na frente. Falhar aqui é mais claro.
-          if [ -z "$TOKEN" ]; then
-            echo "::error::GH_TOKEN ausente ou sem visibilidade neste repositório."
-            exit 1
-          fi
-
           echo "name=${RAW_NAME:-$REPO}" >> "$GITHUB_OUTPUT"
           echo "slug=${RAW_SLUG:-$REPO}" >> "$GITHUB_OUTPUT"
 

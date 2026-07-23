@@ -135,10 +135,17 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           scope: '@mri-qbox-brasil'
 
-      - name: Install workflows e semantic-release
+      # O CLI vem do registry PRIVADO da org (precisa do NODE_AUTH_TOKEN); os
+      # pacotes do semantic-release vem do npm publico. Passos separados para que
+      # uma falha de auth no registry da org nao se confunda com falha de rede.
+      - name: Install CLI @mri-qbox-brasil/workflows
+        run: npm install --no-save @mri-qbox-brasil/workflows
+        env:
+          NODE_AUTH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+
+      - name: Install semantic-release e plugins
         run: |
           npm install --no-save \
-            @mri-qbox-brasil/workflows \
             semantic-release \
             @semantic-release/changelog \
             @semantic-release/commit-analyzer \
@@ -149,16 +156,17 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
 
-      - name: Resolve resource name
+      - name: Resolve o nome do resource
         id: rn
-        run: |
-          NAME="${{ inputs.resource-name }}"
-          if [ -z "$NAME" ]; then NAME="$(echo '${{ inputs.public-repo }}' | cut -d'/' -f2)"; fi
-          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+        env:
+          RAW_NAME: ${{ inputs.resource-name }}
+          PUBLIC_REPO: ${{ inputs.public-repo }}
+        run: echo "name=${RAW_NAME:-${PUBLIC_REPO##*/}}" >> "$GITHUB_OUTPUT"
 
-      - name: Release (source privado)
+      - name: Gera a config do semantic-release
         run: |
-          mkdir -p .release && cat > .release/release.config.cjs << 'EOF'
+          mkdir -p .release
+          cat > .release/release.config.cjs << 'EOF'
           module.exports = {
             branches: ['main'],
             plugins: [
@@ -183,14 +191,18 @@ jobs:
             ]
           };
           EOF
-          npx semantic-release --extends ./.release/release.config.cjs
+
+      - name: Executa o semantic-release (source privado)
+        run: npx semantic-release --extends ./.release/release.config.cjs
         env:
           GITHUB_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
           NODE_AUTH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
           WEB_PATH: ${{ inputs.web-path }}
           RESOURCE_NAME: ${{ steps.rn.outputs.name }}
 
-      - name: Get released version
+      # O successCmd so grava .VERSION quando uma versao foi de fato publicada;
+      # a ausencia do arquivo significa "sem release neste push".
+      - name: Detecta se houve publicacao
         id: meta
         run: |
           if [ -f .VERSION ]; then
@@ -200,47 +212,96 @@ jobs:
             echo "PUBLISHED=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Sync para o repo publico
+      # ── Sync para o espelho publico ─────────────────────────────────────────
+      # Uma tarefa por passo: quando o sync quebra, o passo vermelho ja diz onde.
+
+      - name: Configura identidade do git
+        if: steps.meta.outputs.PUBLISHED == 'true'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Clona o repo publico
         if: steps.meta.outputs.PUBLISHED == 'true'
         env:
-          VERSION: ${{ steps.meta.outputs.VERSION }}
-          RESOURCE_NAME: ${{ steps.rn.outputs.name }}
           PUBLIC_REPO: ${{ inputs.public-repo }}
-          PUBLIC_README: ${{ inputs.public-readme }}
           # Prefere o GH_TOKEN do Infisical (exportado como env); cai no secret.
           # NAO usar so secrets.GH_TOKEN aqui: sobrescreveria o do Infisical com
           # vazio (era o bug que quebrava o clone do repo publico).
           GH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+        run: git clone "https://x-access-token:${GH_TOKEN}@github.com/${PUBLIC_REPO}.git" public_repo
+
+      # O publico e built-only: o conteudo e substituido inteiro a cada release,
+      # nunca mesclado. Preserva apenas o .git.
+      - name: Limpa o conteudo antigo do publico
+        if: steps.meta.outputs.PUBLISHED == 'true'
+        run: find public_repo -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+
+      - name: Copia o resource buildado
+        if: steps.meta.outputs.PUBLISHED == 'true'
+        env:
+          RESOURCE_NAME: ${{ steps.rn.outputs.name }}
+        # dist/<name>/ ja e so o output do build, sem o fonte da UI.
+        run: rsync -av "dist/${RESOURCE_NAME}/" public_repo/
+
+      - name: Copia o README do publico
+        if: steps.meta.outputs.PUBLISHED == 'true'
+        env:
+          PUBLIC_README: ${{ inputs.public-readme }}
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git clone "https://x-access-token:${GH_TOKEN}@github.com/${PUBLIC_REPO}.git" public_repo
+          if [ -f "${PUBLIC_README}" ]; then
+            cp "${PUBLIC_README}" public_repo/README.md
+          else
+            echo "::warning::${PUBLIC_README} nao existe no source — publico fica sem README."
+          fi
 
-          # Limpa conteudo antigo (preserva .git)
-          find public_repo -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
-
-          # Sincroniza o resource buildado (dist/<name>/ ja e so o output, sem UI)
-          rsync -av "dist/${RESOURCE_NAME}/" public_repo/
-
-          # README do repo publico vem do source (README.md ou MANUAL.md)
-          if [ -f "${PUBLIC_README}" ]; then cp "${PUBLIC_README}" public_repo/README.md; fi
-
-          # Injeta o workflow de notificacao do Discord no espelho publico.
-          # Ele roda NO PUBLICO (que pode usar secrets de org no plano Free),
-          # diferente deste job (source privado). Template vem do repo workflows.
+      # O notificador roda NO PUBLICO (que pode usar secrets de org no plano
+      # Free), diferente deste job (source privado). Template vem deste repo.
+      - name: Injeta o workflow de notificacao no publico
+        if: steps.meta.outputs.PUBLISHED == 'true'
+        env:
+          GH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+        run: |
           mkdir -p public_repo/.github/workflows
-          gh api repos/mri-Qbox-Brasil/workflows/contents/.release/templates/release-notify.yml \n            --jq '.content' | base64 -d > public_repo/.github/workflows/release-notify.yml
+          gh api repos/mri-Qbox-Brasil/workflows/contents/.release/templates/release-notify.yml \
+            --jq '.content' | base64 -d > public_repo/.github/workflows/release-notify.yml
 
-          cd public_repo
+      - name: Commita o conteudo sincronizado
+        id: sync_commit
+        if: steps.meta.outputs.PUBLISHED == 'true'
+        working-directory: public_repo
+        env:
+          VERSION: ${{ steps.meta.outputs.VERSION }}
+        run: |
           git add -A
           if git diff --staged --quiet; then
             echo "Nada para sincronizar no conteudo"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             git commit -m "chore(release): sync v${VERSION} [skip ci]"
-            git push origin main
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
-          git tag -f "v${VERSION}"
-          git push origin "v${VERSION}" -f
+
+      - name: Push do conteudo para o publico
+        if: steps.sync_commit.outputs.changed == 'true'
+        working-directory: public_repo
+        run: git push origin main
+
+      # A tag e sempre (re)criada, mesmo quando o conteudo nao mudou: e ela que
+      # ancora a release publica do passo seguinte.
+      - name: Cria a tag da versao no publico
+        if: steps.meta.outputs.PUBLISHED == 'true'
+        working-directory: public_repo
+        env:
+          VERSION: ${{ steps.meta.outputs.VERSION }}
+        run: git tag -f "v${VERSION}"
+
+      - name: Push da tag para o publico
+        if: steps.meta.outputs.PUBLISHED == 'true'
+        working-directory: public_repo
+        env:
+          VERSION: ${{ steps.meta.outputs.VERSION }}
+        run: git push origin "v${VERSION}" -f
 
       - name: Release no repo publico
         if: steps.meta.outputs.PUBLISHED == 'true'

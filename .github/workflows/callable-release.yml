@@ -99,10 +99,17 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           scope: '@mri-qbox-brasil'
 
-      - name: Install workflows e semantic-release
+      # O CLI vem do registry PRIVADO da org (precisa do NODE_AUTH_TOKEN); os
+      # pacotes do semantic-release vem do npm publico. Passos separados para que
+      # uma falha de auth no registry da org nao se confunda com falha de rede.
+      - name: Install CLI @mri-qbox-brasil/workflows
+        run: npm install --no-save @mri-qbox-brasil/workflows
+        env:
+          NODE_AUTH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+
+      - name: Install semantic-release e plugins
         run: |
           npm install --no-save \
-            @mri-qbox-brasil/workflows \
             semantic-release \
             @semantic-release/changelog \
             @semantic-release/commit-analyzer \
@@ -112,6 +119,12 @@ jobs:
             @semantic-release/github
         env:
           NODE_AUTH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+
+      # Nome do resource (pasta/zip do build). Resolvido aqui em vez de dentro do
+      # prepareCmd do semantic-release, que ficava com um `cut` embutido.
+      - name: Resolve o nome do resource
+        id: rn
+        run: echo "name=${GITHUB_REPOSITORY##*/}" >> "$GITHUB_OUTPUT"
 
       # Notificador de release para o Discord. Fica inline (não num arquivo do
       # repo) porque a callable roda no checkout do resource chamador, não deste
@@ -251,7 +264,7 @@ jobs:
           })().catch((e) => { console.error('[discord] erro não fatal:', e.message); process.exit(0); });
           EOF
 
-      - name: Release
+      - name: Gera a config do semantic-release
         run: |
           cat > .release.config.cjs << 'EOF'
           module.exports = {
@@ -261,7 +274,10 @@ jobs:
               '@semantic-release/release-notes-generator',
               '@semantic-release/changelog',
               ['@semantic-release/exec', {
-                prepareCmd: "REPO_NAME=$(echo $GITHUB_REPOSITORY | cut -d'/' -f2) && npx workflows set-version ${nextRelease.version} \"$WEB_PATH\" && npx workflows build \"$REPO_NAME\" \"$WEB_PATH\"",
+                // set-version injeta a versao no placeholder __VERSION__ do
+                // fxmanifest e bumpa o package.json do front; build empacota o
+                // resource em dist/<name>.zip.
+                prepareCmd: "npx workflows set-version ${nextRelease.version} \"$WEB_PATH\" && npx workflows build \"$RESOURCE_NAME\" \"$WEB_PATH\"",
                 // Notifica o Discord só quando uma versão é de fato publicada.
                 // Passa apenas a versão (semver) — o script busca as notas via API.
                 successCmd: "node .ci/discord-release.js '${nextRelease.version}'"
@@ -280,7 +296,9 @@ jobs:
             ]
           };
           EOF
-          npx semantic-release --extends ./.release.config.cjs
+
+      - name: Executa o semantic-release
+        run: npx semantic-release --extends ./.release.config.cjs
         env:
           # Padrao `env.X || secrets.X`: usa o valor vindo do Infisical (exportado
           # como env pelo passo OIDC); se ausente (Infisical fora), cai no secret.
@@ -288,6 +306,8 @@ jobs:
           NODE_AUTH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
           # Diretorio do front, consumido pelo set-version, build e git assets.
           WEB_PATH: ${{ inputs.web-path }}
+          # Nome do resource, consumido pelo build (pasta e zip em dist/).
+          RESOURCE_NAME: ${{ steps.rn.outputs.name }}
           # Token para o GitHub Models (acesso é por identidade da conta, não por
           # escopo). Prefere um PAT dedicado; senão usa o GH_TOKEN (PAT pessoal do
           # release); em último caso o GITHUB_TOKEN (403 em org free -> notas cruas).
