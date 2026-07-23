@@ -14,6 +14,7 @@ Também publica o pacote npm `@mri-qbox-brasil/workflows`, que contém os script
 | `callable-mirror-release.yml` | Release no modelo fonte privada → espelho público built-only (build no source, sync do resource buildado e release no repo público) |
 | `callable-recipe-release.yml` | Release de repos de receita txAdmin (empacota e sobe para S3/R2) |
 | `callable-lint.yml` | ESLint (web) e/ou luacheck (Lua) |
+| `callable-test.yml` | Vitest (web) e/ou testes de Lua sob o harness wasmoon |
 | `callable-update-actions.yml` | Atualização de versões das GitHub Actions |
 | `callable-repo-dispatch.yml` | Notificação ao repo de documentação |
 | `callable-template-sync.yml` | Sincronização com o `script-template` |
