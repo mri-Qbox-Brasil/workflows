@@ -12,6 +12,20 @@ on:
       destination-branch:
         type: string
         default: 'main'
+      # Por padrao a action NAO apaga nada: ela so adiciona/atualiza. Um workflow
+      # removido do template sobrevive para sempre nos repos que ja o tinham.
+      # Ligar isto faz o sync propagar tambem as REMOCOES.
+      #
+      # Custa uma mudanca de semantica: `is_force_deletion` nao funciona com os
+      # pull params padrao, entao eles trocam junto (ver abaixo) e o sync deixa
+      # de resolver conflito sozinho a favor do template (`-X theirs`) — o PR
+      # passa a trazer conflito de verdade quando o repo divergiu no mesmo
+      # arquivo. Por isso o default e false: ligue por repo, conferindo o
+      # primeiro PR. O .templatesyncignore continua protegendo o que for listado.
+      force-deletion:
+        description: 'Propaga remocoes do template (apaga arquivos deletados na origem)'
+        type: boolean
+        default: false
       # Config do Infisical (fonte central de secrets via OIDC). Nada aqui e
       # secret: o Identity ID e so um identificador — a auth exige o JWT OIDC do
       # Actions casar com a trust condition (repository_owner) da identity.
@@ -93,3 +107,9 @@ jobs:
           pr_title: "chore(template): sync with template"
           pr_labels: "template-sync"
           pr_body: "Atualização automática do template base"
+          is_force_deletion: ${{ inputs.force-deletion }}
+          # A action documenta que `is_force_deletion` NAO funciona com os pull
+          # params default; com ele ligado, `--squash` e `-X theirs` saem e entra
+          # `--no-edit`. Com ele desligado, mantemos exatamente o default da
+          # action — o comportamento de hoje nao muda em repo nenhum.
+          git_remote_pull_params: ${{ inputs.force-deletion && '--allow-unrelated-histories --strategy=recursive --no-edit' || '--allow-unrelated-histories --squash --strategy=recursive -X theirs' }}

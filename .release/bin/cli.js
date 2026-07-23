@@ -12,6 +12,7 @@ const commands = {
     build: 'build.sh',
     'update-actions': 'update-actions.sh',
     'set-version': 'set-version.js',
+    'notify-discord': 'discord-release.js',
 }
 
 if (!command || !commands[command]) {

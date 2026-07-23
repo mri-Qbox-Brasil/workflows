@@ -230,9 +230,28 @@ jobs:
       pull-requests: write
       id-token: write       # OIDC do Infisical
     uses: mri-Qbox-Brasil/workflows/.github/workflows/callable-template-sync.yml@main
+    with:
+      # Propaga também as REMOÇÕES do template (workflows apagados na origem).
+      # Desligado por padrão: ver o aviso abaixo antes de ligar.
+      force-deletion: ${{ vars.TEMPLATE_SYNC_DELETE == 'true' }}
     secrets:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
+
+**Remoções não propagam por padrão.** A `actions-template-sync` só adiciona e
+atualiza arquivos. Um workflow apagado do `script-template` **continua existindo
+para sempre** nos repos que já o tinham — é assim que sobra workflow obsoleto
+rodando por aí. Para propagar as remoções, defina a variável
+`TEMPLATE_SYNC_DELETE = true` no repositório.
+
+Antes de ligar, saiba o que muda junto: a action não suporta force deletion com
+os `git_remote_pull_params` padrão, então eles são trocados
+(`--squash` e `-X theirs` saem, `--no-edit` entra). Na prática o sync **deixa de
+resolver conflitos sozinho a favor do template** — se o repo divergiu no mesmo
+arquivo, o PR passa a trazer conflito de verdade em vez de sobrescrever em
+silêncio. Para muitos repos isso é uma melhoria; para os que customizaram
+bastante, é trabalho manual. Ligue repo a repo e confira o primeiro PR. O
+`.templatesyncignore` continua protegendo o que estiver listado nele.
 
 ### Port PR (público → fonte privada)
 

@@ -86,9 +86,19 @@ Envia evento `update-manual` para o repo de documentação quando `MANUAL.md` é
 ### `callable-template-sync.yml`
 Abre PR sincronizando o repositório com o `script-template`.
 
-**Inputs:** `source-repo` (default: `mri-Qbox-Brasil/script-template`), `source-branch`, `destination-branch`
+**Inputs:** `source-repo` (default: `mri-Qbox-Brasil/script-template`), `source-branch`, `destination-branch`, `force-deletion` (default: `false`)
 **Secrets:** `GH_TOKEN` (opcional; precisa de escopo `workflow` para tocar em `.github/workflows/`)
 **Chaves:** `CI_TEMPLATE_SYNC` (job), `CI_SECRETS_INFISICAL`
+
+> **Remoções não propagam por padrão.** A action só adiciona e atualiza: um
+> workflow apagado do `script-template` continua existindo para sempre nos repos
+> que já o tinham. Ligue `force-deletion: true` para propagar também as remoções.
+> O preço é uma troca de semântica do merge — os `git_remote_pull_params` mudam
+> junto (a action não suporta force deletion com os padrões), e o sync deixa de
+> resolver conflitos sozinho a favor do template (`-X theirs`): quando o repo
+> divergiu no mesmo arquivo, o PR passa a trazer conflito de verdade. Por isso o
+> default é `false` — ligue repo a repo, conferindo o primeiro PR. O
+> `.templatesyncignore` continua valendo.
 
 ### `callable-port-pr.yml`
 Porta um PR aberto no repo **público** para o repo de **fonte privada** como 1 commit squash **preservando o autor original**, abre um PR no privado e (opcional) fecha o público com um comentário informativo. Em caso de falha, comenta marcando o time da org (`pr-team`) para porte manual.
@@ -110,3 +120,27 @@ O pacote `@mri-qbox-brasil/workflows` é publicado automaticamente a cada releas
 | `workflows build <nome> [web-dir]` | Build e empacotamento do recurso em zip |
 | `workflows set-version <versão> [web-dir]` | Injeta versão no `fxmanifest.lua` e sincroniza `web/package.json` |
 | `workflows update-actions` | Atualiza versões de actions nos workflows |
+| `workflows notify-discord <versão>` | Posta o embed da release no webhook do Discord |
+
+### `workflows notify-discord`
+
+Fonte única do notificador de release (`.release/discord-release.js`). Recebe
+**apenas a versão** — as notas e a descrição vêm da API do GitHub, e o resumo em
+PT-BR do GitHub Models. Nunca derruba a release: qualquer falha sai com `0`.
+
+Nunca passe as release notes por linha de comando: elas vêm de mensagens de
+commit, e um apóstrofo já quebra o shell — em repo público, quem escreve o commit
+pode ser um contribuidor externo.
+
+Usado em dois lugares, a partir do mesmo arquivo:
+
+- `callable-release.yml` — via `npx workflows notify-discord`, no `successCmd` do
+  semantic-release (dispara só quando uma versão é de fato publicada).
+- `.release/templates/release-notify.yml` — o notificador injetado nos espelhos
+  públicos. Lá não há `npm install` nem token do registry privado, então o
+  workflow baixa o script por `raw.githubusercontent` (este repo é público).
+
+**Env:** `DISCORD_RELEASE_WEBHOOK` (sem ela, pula), `NOTIFY_REPO` (aponta o embed
+a outro repo — usado pelo espelho), `GITHUB_TOKEN`, `GH_MODELS_TOKEN`, `LLM_MODEL`,
+`DISCORD_RELEASE_NOTIFY` (kill switch), `LOGO_MRIQBOX_URL`, `RESOURCE_MRIQBOX_URL`,
+`INVITE_DISCORD_URL`, `DOCS_MRIQBOX_URL`.

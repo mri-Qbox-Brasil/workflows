@@ -13,6 +13,7 @@
         "bin/",
         "templates/",
         "set-version.js",
+        "discord-release.js",
         "build.sh",
         "update-actions.sh",
         "release.config.callable.cjs"
