@@ -34,6 +34,9 @@ on:
 
 jobs:
   update-actions:
+    # Chave do job: `vars.CI_UPDATE_ACTIONS=false` congela as versoes das actions
+    # neste repo. Ver a secao "Chaves liga-desliga" no README.
+    if: ${{ !contains(fromJSON('["false","0","off","no"]'), vars.CI_UPDATE_ACTIONS) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -43,10 +46,21 @@ jobs:
       id-token: write
 
     steps:
+      - name: Chaves (vars) deste repositorio
+        env:
+          CI_SECRETS_INFISICAL: ${{ vars.CI_SECRETS_INFISICAL }}
+        run: |
+          echo "CI_UPDATE_ACTIONS=<ligado: o job rodou>"
+          echo "CI_SECRETS_INFISICAL=${CI_SECRETS_INFISICAL:-<vazio: ligado>}"
+
       # Puxa os secrets do Infisical via OIDC (fonte central). Nao-fatal: cai no
       # fallback secrets.* se o Infisical estiver fora.
+      #
+      # Chave: `vars.CI_SECRETS_INFISICAL=false` pula o Infisical e usa so os
+      # secrets nativos do repo/org.
       - name: Secrets via Infisical (OIDC)
         id: infisical
+        if: ${{ !contains(fromJSON('["false","0","off","no"]'), vars.CI_SECRETS_INFISICAL) }}
         continue-on-error: true
         uses: Infisical/secrets-action@v1.0.16
         with:

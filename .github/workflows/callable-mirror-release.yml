@@ -80,6 +80,9 @@ on:
 
 jobs:
   release:
+    # Chave do job: `vars.CI_RELEASE=false` desliga a release neste repositorio.
+    # Ver a secao "Chaves liga-desliga" no README.
+    if: ${{ !contains(fromJSON('["false","0","off","no"]'), vars.CI_RELEASE) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -92,11 +95,32 @@ jobs:
       id-token: write
 
     steps:
+      # Diagnostico das chaves: mostra o que este repositorio configurou. Serve
+      # para entender de cara por que um passo apareceu como "skipped".
+      - name: Chaves (vars) deste repositorio
+        env:
+          CI_SECRETS_INFISICAL: ${{ vars.CI_SECRETS_INFISICAL }}
+          CI_MIRROR_README: ${{ vars.CI_MIRROR_README }}
+          CI_MIRROR_NOTIFY_WORKFLOW: ${{ vars.CI_MIRROR_NOTIFY_WORKFLOW }}
+          CI_MIRROR_PUBLIC_RELEASE: ${{ vars.CI_MIRROR_PUBLIC_RELEASE }}
+          CI_RELEASE_NOTIFY_DISCORD: ${{ vars.CI_RELEASE_NOTIFY_DISCORD }}
+        run: |
+          echo "CI_RELEASE=<ligado: o job rodou>"
+          echo "CI_SECRETS_INFISICAL=${CI_SECRETS_INFISICAL:-<vazio: ligado>}"
+          echo "CI_MIRROR_README=${CI_MIRROR_README:-<vazio: ligado>}"
+          echo "CI_MIRROR_NOTIFY_WORKFLOW=${CI_MIRROR_NOTIFY_WORKFLOW:-<vazio: ligado>}"
+          echo "CI_MIRROR_PUBLIC_RELEASE=${CI_MIRROR_PUBLIC_RELEASE:-<vazio: ligado>}"
+          echo "CI_RELEASE_NOTIFY_DISCORD=${CI_RELEASE_NOTIFY_DISCORD:-<vazio: ligado>}"
+
       # Puxa os secrets do Infisical via OIDC (fonte central). Nao-fatal: se o
       # Infisical estiver fora, o passo falha mas o workflow segue e cai no
       # fallback `secrets.*` (padrao `env.X || secrets.X`) nos consumidores.
+      #
+      # Chave: `vars.CI_SECRETS_INFISICAL=false` pula o Infisical e usa so os
+      # secrets nativos do repo/org.
       - name: Secrets via Infisical (OIDC)
         id: infisical
+        if: ${{ !contains(fromJSON('["false","0","off","no"]'), vars.CI_SECRETS_INFISICAL) }}
         continue-on-error: true
         uses: Infisical/secrets-action@v1.0.16
         with:
@@ -244,8 +268,9 @@ jobs:
         # dist/<name>/ ja e so o output do build, sem o fonte da UI.
         run: rsync -av "dist/${RESOURCE_NAME}/" public_repo/
 
+      # Chave: `vars.CI_MIRROR_README=false` deixa o publico manter o README dele.
       - name: Copia o README do publico
-        if: steps.meta.outputs.PUBLISHED == 'true'
+        if: ${{ steps.meta.outputs.PUBLISHED == 'true' && !contains(fromJSON('["false","0","off","no"]'), vars.CI_MIRROR_README) }}
         env:
           PUBLIC_README: ${{ inputs.public-readme }}
         run: |
@@ -257,8 +282,9 @@ jobs:
 
       # O notificador roda NO PUBLICO (que pode usar secrets de org no plano
       # Free), diferente deste job (source privado). Template vem deste repo.
+      # Chave: `vars.CI_MIRROR_NOTIFY_WORKFLOW=false` nao injeta o notificador.
       - name: Injeta o workflow de notificacao no publico
-        if: steps.meta.outputs.PUBLISHED == 'true'
+        if: ${{ steps.meta.outputs.PUBLISHED == 'true' && !contains(fromJSON('["false","0","off","no"]'), vars.CI_MIRROR_NOTIFY_WORKFLOW) }}
         env:
           GH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
         run: |
@@ -303,8 +329,10 @@ jobs:
           VERSION: ${{ steps.meta.outputs.VERSION }}
         run: git push origin "v${VERSION}" -f
 
+      # Chave: `vars.CI_MIRROR_PUBLIC_RELEASE=false` sincroniza o codigo e a tag,
+      # mas nao cria a release (nem o zip) no repo publico.
       - name: Release no repo publico
-        if: steps.meta.outputs.PUBLISHED == 'true'
+        if: ${{ steps.meta.outputs.PUBLISHED == 'true' && !contains(fromJSON('["false","0","off","no"]'), vars.CI_MIRROR_PUBLIC_RELEASE) }}
         uses: softprops/action-gh-release@v3
         with:
           repository: ${{ inputs.public-repo }}
@@ -318,8 +346,10 @@ jobs:
       # Dispara a notificacao do Discord no PUBLICO explicitamente. Nao dependemos
       # do evento release:published (que nao dispara quando a release e criada por
       # token) — o workflow_dispatch sempre roda, e la o secret de org funciona.
+      #
+      # Chave: `vars.CI_RELEASE_NOTIFY_DISCORD=false` nao dispara a notificacao.
       - name: Dispara notificacao no publico
-        if: steps.meta.outputs.PUBLISHED == 'true'
+        if: ${{ steps.meta.outputs.PUBLISHED == 'true' && !contains(fromJSON('["false","0","off","no"]'), vars.CI_RELEASE_NOTIFY_DISCORD) }}
         env:
           # GH_TOKEN vem do Infisical (exportado como env) ou cai no secret.
           GH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}

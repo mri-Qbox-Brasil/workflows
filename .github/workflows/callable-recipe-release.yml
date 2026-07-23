@@ -73,6 +73,9 @@ on:
 
 jobs:
   release:
+    # Chave do job: `vars.CI_RELEASE=false` desliga a release neste repositorio.
+    # Ver a secao "Chaves liga-desliga" no README.
+    if: ${{ !contains(fromJSON('["false","0","off","no"]'), vars.CI_RELEASE) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -81,10 +84,27 @@ jobs:
       id-token: write
 
     steps:
+      - name: Chaves (vars) deste repositorio
+        env:
+          CI_SECRETS_INFISICAL: ${{ vars.CI_SECRETS_INFISICAL }}
+          CI_RECIPE_UPLOAD: ${{ vars.CI_RECIPE_UPLOAD }}
+          CI_RECIPE_SYNC: ${{ vars.CI_RECIPE_SYNC }}
+          CI_RECIPE_MANIFEST: ${{ vars.CI_RECIPE_MANIFEST }}
+        run: |
+          echo "CI_RELEASE=<ligado: o job rodou>"
+          echo "CI_SECRETS_INFISICAL=${CI_SECRETS_INFISICAL:-<vazio: ligado>}"
+          echo "CI_RECIPE_UPLOAD=${CI_RECIPE_UPLOAD:-<vazio: ligado>}"
+          echo "CI_RECIPE_SYNC=${CI_RECIPE_SYNC:-<vazio: ligado>}"
+          echo "CI_RECIPE_MANIFEST=${CI_RECIPE_MANIFEST:-<vazio: ligado>}"
+
       # Puxa os secrets do Infisical via OIDC (fonte central). Nao-fatal: cai no
       # fallback secrets.* (padrao env.X || secrets.X) se o Infisical estiver fora.
+      #
+      # Chave: `vars.CI_SECRETS_INFISICAL=false` pula o Infisical e usa so os
+      # secrets nativos do repo/org.
       - name: Secrets via Infisical (OIDC)
         id: infisical
+        if: ${{ !contains(fromJSON('["false","0","off","no"]'), vars.CI_SECRETS_INFISICAL) }}
         continue-on-error: true
         uses: Infisical/secrets-action@v1.0.16
         with:
@@ -125,7 +145,7 @@ jobs:
       # $GITHUB_ENV, para que cada upload seja um comando `aws` unico.
 
       - name: Configura credenciais AWS/R2
-        if: steps.semantic.outputs.new_release_published == 'true'
+        if: ${{ steps.semantic.outputs.new_release_published == 'true' && !contains(fromJSON('["false","0","off","no"]'), vars.CI_RECIPE_UPLOAD) }}
         env:
           AWS_KEY: ${{ env.AWS_ACCESS_KEY_ID || secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET: ${{ env.AWS_SECRET_ACCESS_KEY || secrets.AWS_SECRET_ACCESS_KEY }}
@@ -147,7 +167,7 @@ jobs:
           fi
 
       - name: Resolve o destino no bucket
-        if: steps.semantic.outputs.new_release_published == 'true'
+        if: ${{ steps.semantic.outputs.new_release_published == 'true' && !contains(fromJSON('["false","0","off","no"]'), vars.CI_RECIPE_UPLOAD) }}
         env:
           AWS_S3_BUCKET: ${{ env.AWS_S3_BUCKET || secrets.AWS_S3_BUCKET }}
           AWS_S3_PATH: ${{ env.AWS_S3_PATH || secrets.AWS_S3_PATH }}
@@ -161,7 +181,7 @@ jobs:
           echo "BUCKET=s3://${AWS_S3_BUCKET}/${S3_PATH}" >> "$GITHUB_ENV"
 
       - name: Empacota o zip da release
-        if: steps.semantic.outputs.new_release_published == 'true'
+        if: ${{ steps.semantic.outputs.new_release_published == 'true' && !contains(fromJSON('["false","0","off","no"]'), vars.CI_RECIPE_UPLOAD) }}
         env:
           RELEASE_FILES: ${{ inputs.release-files }}
           ZIP_NAME: ${{ inputs.zip-name }}
@@ -173,26 +193,26 @@ jobs:
           zip -r "$ZIP_NAME" $PATHS
 
       - name: Envia o zip para releases/
-        if: steps.semantic.outputs.new_release_published == 'true'
+        if: ${{ steps.semantic.outputs.new_release_published == 'true' && !contains(fromJSON('["false","0","off","no"]'), vars.CI_RECIPE_UPLOAD) }}
         env:
           ZIP_NAME: ${{ inputs.zip-name }}
         run: aws s3 cp "$ZIP_NAME" "${BUCKET}releases/$ZIP_NAME"
 
       - name: Sincroniza a pasta de recipes
-        if: steps.semantic.outputs.new_release_published == 'true'
+        if: ${{ steps.semantic.outputs.new_release_published == 'true' && !contains(fromJSON('["false","0","off","no"]'), vars.CI_RECIPE_UPLOAD) && !contains(fromJSON('["false","0","off","no"]'), vars.CI_RECIPE_SYNC) }}
         env:
           RECIPES_DIR: ${{ inputs.recipes-dir }}
         run: aws s3 sync "$RECIPES_DIR/" "${BUCKET}latest/$RECIPES_DIR/"
 
       - name: Envia o manifesto de recipes
-        if: steps.semantic.outputs.new_release_published == 'true'
+        if: ${{ steps.semantic.outputs.new_release_published == 'true' && !contains(fromJSON('["false","0","off","no"]'), vars.CI_RECIPE_UPLOAD) && !contains(fromJSON('["false","0","off","no"]'), vars.CI_RECIPE_MANIFEST) }}
         env:
           RECIPES_MANIFEST: ${{ inputs.recipes-manifest }}
         run: aws s3 cp "$RECIPES_MANIFEST" "${BUCKET}latest/$RECIPES_MANIFEST"
 
       # Compatibilidade legada: mantem uma copia da recipe base como recipe.yaml.
       - name: Envia a recipe legada (recipe.yaml)
-        if: ${{ steps.semantic.outputs.new_release_published == 'true' && inputs.legacy-recipe != '' }}
+        if: ${{ steps.semantic.outputs.new_release_published == 'true' && inputs.legacy-recipe != '' && !contains(fromJSON('["false","0","off","no"]'), vars.CI_RECIPE_UPLOAD) }}
         env:
           LEGACY_RECIPE: ${{ inputs.legacy-recipe }}
         run: aws s3 cp "$LEGACY_RECIPE" "${BUCKET}latest/recipe.yaml"

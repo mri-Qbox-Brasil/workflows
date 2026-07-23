@@ -22,9 +22,13 @@ on:
         default: false
 
 jobs:
+  # Cada job tem duas travas: o input do wrapper (default do template) e a chave
+  # `vars.CI_LINT_*` do repositorio chamador, que vence sem precisar editar o
+  # wrapper — util porque o wrapper e sobrescrito pelo template-sync.
+  # Ver a secao "Chaves liga-desliga" no README.
   lint-web:
     name: Lint Web (ESLint)
-    if: ${{ inputs.web-lint }}
+    if: ${{ inputs.web-lint && !contains(fromJSON('["false","0","off","no"]'), vars.CI_LINT_WEB) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -49,7 +53,7 @@ jobs:
 
   lint-lua:
     name: Lint Lua (luacheck)
-    if: ${{ inputs.lua-lint }}
+    if: ${{ inputs.lua-lint && !contains(fromJSON('["false","0","off","no"]'), vars.CI_LINT_LUA) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

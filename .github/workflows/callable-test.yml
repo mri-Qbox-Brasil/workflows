@@ -42,9 +42,12 @@ on:
         default: ''
 
 jobs:
+  # Cada job tem duas travas: o input do wrapper (default do template) e a chave
+  # `vars.CI_TEST_*` do repositorio chamador, que vence sem precisar editar o
+  # wrapper. Ver a secao "Chaves liga-desliga" no README.
   test-web:
     name: Test Web (Vitest)
-    if: ${{ inputs.web-tests }}
+    if: ${{ inputs.web-tests && !contains(fromJSON('["false","0","off","no"]'), vars.CI_TEST_WEB) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -69,7 +72,7 @@ jobs:
 
   test-lua:
     name: Test Lua (harness)
-    if: ${{ inputs.lua-tests }}
+    if: ${{ inputs.lua-tests && !contains(fromJSON('["false","0","off","no"]'), vars.CI_TEST_LUA) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
