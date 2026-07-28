@@ -57,11 +57,14 @@ jobs:
     # Ver a secao "Chaves liga-desliga" no README.
     if: ${{ !contains(fromJSON('["false","0","off","no"]'), vars.CI_TEMPLATE_SYNC) }}
     runs-on: ubuntu-latest
+    # ATENCAO — o wrapper chamador precisa declarar ESTE MESMO bloco, inteiro.
+    # Declarar `permissions:` num job SUBSTITUI as permissoes padrao, nao soma:
+    # todo escopo omitido vira `none`, e um reusable workflow que peca mais do que
+    # o chamador concede morre em startup_failure, sem job e sem log. O id-token
+    # (OIDC do Infisical) so e concedido aqui se o chamador tambem conceder.
     permissions:
       contents: write
       pull-requests: write
-      # OIDC: emite o JWT que o Infisical troca pelos secrets. O wrapper chamador
-      # do resource TAMBEM precisa de `id-token: write`.
       id-token: write
 
     steps:

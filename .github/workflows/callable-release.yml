@@ -62,6 +62,17 @@ jobs:
     # Ver a secao "Chaves liga-desliga" no README.
     if: ${{ !contains(fromJSON('["false","0","off","no"]'), vars.CI_RELEASE) }}
     runs-on: ubuntu-latest
+    # ATENCAO — o JOB CHAMADOR (wrapper release.yml do resource) precisa declarar
+    # ESTE MESMO bloco, inteiro. Nao basta copiar a linha do id-token.
+    #
+    # Declarar `permissions:` num job SUBSTITUI as permissoes padrao, nao soma:
+    # todo escopo omitido vira `none`. Um wrapper que declare apenas
+    # `id-token: write` zera os demais, e um reusable workflow que peca mais do
+    # que o chamador concede morre em startup_failure — sem job criado e sem log,
+    # o que deixa a falha praticamente invisivel.
+    #
+    # O id-token e para o OIDC que o Infisical troca pelos secrets, e nao basta
+    # estar aqui: por ser reusable workflow, so e concedido se o chamador conceder.
     permissions:
       contents: write
       issues: write
@@ -69,9 +80,6 @@ jobs:
       packages: write
       # Necessário para o GitHub Models (geração da descrição via IA).
       models: read
-      # OIDC: emite o JWT que o Infisical troca pelos secrets. ATENCAO: por ser
-      # reusable workflow, o JOB CHAMADOR (wrapper release.yml do resource) TAMBEM
-      # precisa declarar `id-token: write` — senao o token nao e concedido aqui.
       id-token: write
 
     steps:
