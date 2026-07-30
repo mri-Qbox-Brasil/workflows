@@ -22,13 +22,20 @@ on:
         default: false
 
 jobs:
-  # Cada job tem duas travas: o input do wrapper (default do template) e a chave
-  # `vars.CI_LINT_*` do repositorio chamador, que vence sem precisar editar o
-  # wrapper — util porque o wrapper e sobrescrito pelo template-sync.
-  # Ver a secao "Chaves liga-desliga" no README.
+  # As chaves `CI_LINT_*` aqui sao TRI-STATE, nao so liga-desliga:
+  #
+  #   vazia  -> quem decide e o input do wrapper (o default que veio do template)
+  #   true   -> liga, mesmo com o input false
+  #   false  -> desliga, mesmo com o input true
+  #
+  # O "true" existe porque o template-sync SOBRESCREVE o wrapper: um repo que
+  # editasse `lua-lint: true` no proprio lint.yml perderia isso no primeiro PR de
+  # sync (o pull param default resolve conflito a favor do template, `-X theirs`)
+  # e o luacheck pararia de rodar em silencio. A var mora fora do arquivo, entao
+  # sobrevive. Ver a secao "Chaves liga-desliga" no README.
   lint-web:
     name: Lint Web (ESLint)
-    if: ${{ inputs.web-lint && !contains(fromJSON('["false","0","off","no"]'), vars.CI_LINT_WEB) }}
+    if: ${{ contains(fromJSON('["true","1","on","yes"]'), vars.CI_LINT_WEB) || (inputs.web-lint && !contains(fromJSON('["false","0","off","no"]'), vars.CI_LINT_WEB)) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -53,7 +60,7 @@ jobs:
 
   lint-lua:
     name: Lint Lua (luacheck)
-    if: ${{ inputs.lua-lint && !contains(fromJSON('["false","0","off","no"]'), vars.CI_LINT_LUA) }}
+    if: ${{ contains(fromJSON('["true","1","on","yes"]'), vars.CI_LINT_LUA) || (inputs.lua-lint && !contains(fromJSON('["false","0","off","no"]'), vars.CI_LINT_LUA)) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

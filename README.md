@@ -79,6 +79,28 @@ As chaves **somam-se** aos inputs existentes (`web-lint`, `lua-tests`,
 `close-public-pr`, …): o input é o padrão que vem do template, a chave é o
 override por repositório. Basta um dos dois estar desligado para o passo não rodar.
 
+As quatro chaves de `lint` e `test` (`CI_LINT_WEB`, `CI_LINT_LUA`,
+`CI_TEST_WEB`, `CI_TEST_LUA`) vão além disso: são **tri-state**, e também
+*ligam*.
+
+| Valor | Efeito |
+|---|---|
+| vazia | decide o input do wrapper (o default que veio do template) |
+| `true` | liga, mesmo com o input `false` |
+| `false` | desliga, mesmo com o input `true` |
+
+O `true` existe porque essas trilhas nascem desligadas no template — o
+`script-template` não tem `.luacheckrc`, nem `tests/`, nem script `test` no
+`web/package.json`, então ligá-las por default quebraria todo repo novo. E
+editar `lua-lint: true` no wrapper do repo não resolve: o `template-sync`
+sobrescreve o arquivo (`-X theirs` no pull default) e o luacheck para de rodar
+em silêncio. A var mora fora do arquivo e sobrevive.
+
+Ligar a chave só adianta se o `paths:` do wrapper também acordar o workflow para
+aqueles arquivos — por isso o `lint.yml`/`test.yml` do template já listam os
+caminhos de Lua mesmo com a trilha desligada. Filtro de caminho decide se o
+workflow dispara; a chave decide se o job roda.
+
 Uma única chave é **opt-in** — vazia significa desligada, e só `true` liga:
 
 | Chave | Liga | Callable |

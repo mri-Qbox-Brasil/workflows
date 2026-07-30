@@ -73,6 +73,17 @@ Cada job e cada passo opcional dos callables tem uma chave própria, definida co
 | `CI_UPDATE_ACTIONS` | a atualização das versões das actions |
 | `CI_DOCS_NOTIFY` | o aviso ao repo de documentação |
 
+As quatro chaves de `lint`/`test` são **tri-state** — vazia deixa o input do
+wrapper decidir, `true` liga mesmo com o input `false`, `false` desliga mesmo com
+o input `true`. É assim porque o template nasce com as trilhas de Lua e de teste
+desligadas (não traz `.luacheckrc`, `tests/` nem script `test`), e editar o
+wrapper não adianta: o `template-sync` sobrescreve o arquivo.
+
+```bash
+gh variable set CI_LINT_LUA --body true --repo mri-Qbox-Brasil/mri_Qadmin-source
+gh variable set CI_TEST_LUA --body true --repo mri-Qbox-Brasil/mri_Qadmin-source
+```
+
 Uma chave é *opt-in* (vazia = desligada, só `true` liga):
 
 | Chave | Liga |

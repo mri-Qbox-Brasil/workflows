@@ -54,20 +54,25 @@ Release para repos de **receita** do txAdmin (ex.: `mriTxRecipe`). Sem build de 
 **Chaves:** `CI_RELEASE` (job), `CI_SECRETS_INFISICAL`, `CI_RECIPE_UPLOAD`, `CI_RECIPE_SYNC`, `CI_RECIPE_MANIFEST`
 
 ### `callable-lint.yml`
-Roda ESLint no diretório web e/ou luacheck no Lua. Cada linter é ligado por input.
+Roda ESLint no diretório web e/ou luacheck no Lua. Cada linter é ligado por input — ou pela chave, que aqui é *tri-state* (vazia ⇒ vale o input; `true` liga; `false` desliga).
 
 **Inputs:** `node-version`, `pnpm-version`, `web-dir` (default: `web`), `web-lint` (default: `true`), `lua-lint` (default: `false`)
 **Secrets:** nenhum
-**Chaves:** `CI_LINT_WEB`, `CI_LINT_LUA` (jobs)
+**Chaves:** `CI_LINT_WEB`, `CI_LINT_LUA` (jobs, *tri-state*)
+
+O luacheck nasce desligado porque exige um `.luacheckrc`, que o `script-template` não traz — ligue com `CI_LINT_LUA=true` em vez de editar o wrapper, que o `template-sync` sobrescreve. O `lint.yml` do template já lista os caminhos de Lua no `paths:`, senão um PR só de `.lua` nem acordaria o workflow.
 
 ### `callable-test.yml`
 Roda os testes do pacote da NUI (Vitest) e/ou os testes de Lua sob o harness
 `@mriqbox/fivem-test-harness` (executa o Lua real via wasmoon, sem servidor FiveM
-nem MySQL). Cada eixo é ligado por input; nenhum passo usa `continue-on-error`.
+nem MySQL). Cada eixo é ligado por input — ou pela chave, que aqui é *tri-state*
+(vazia ⇒ vale o input; `true` liga; `false` desliga); nenhum passo usa `continue-on-error`.
 
 **Inputs:** `node-version` (default: `22`), `pnpm-version`, `web-dir` (default: `web`), `web-tests` (default: `true`), `lua-tests` (default: `false`), `lua-dir` (default: `tests/lua`), `lua-deps-dirs` (pacotes locais a instalar antes, um por linha — necessário quando o harness vem via `link:`)
 **Secrets:** nenhum
-**Chaves:** `CI_TEST_WEB`, `CI_TEST_LUA` (jobs)
+**Chaves:** `CI_TEST_WEB`, `CI_TEST_LUA` (jobs, *tri-state*)
+
+O `test.yml` do template nasce com os **dois** eixos desligados: o `script-template` não tem `tests/` nem script `test` no `web/package.json`, então ligar por default quebraria todo repo novo. Cada repo liga o que de fato tem, por var — que sobrevive ao `template-sync`.
 
 ### `callable-update-actions.yml`
 Atualiza versões das GitHub Actions e Node.js LTS nos workflows, abrindo PR com as mudanças.
