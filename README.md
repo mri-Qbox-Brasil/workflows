@@ -136,10 +136,15 @@ embed sai com as notas cruas e a release **nunca** é derrubada.
 
 | Variável | Onde | Para quê |
 |---|---|---|
-| `AI_PROVIDER` | var | `groq`, `gemini`, `github` ou `custom`. Vazio ⇒ `github` |
-| `AI_MODEL` | var | Modelo. Vazio ⇒ o default do provedor |
-| `AI_BASE_URL` | var | Só para `custom`: endpoint OpenAI-compatible |
-| `AI_API_KEY` | secret | Chave do provedor |
+| `AI_PROVIDER` | Infisical ou var | `groq`, `gemini`, `github` ou `custom`. Vazio ⇒ `github` |
+| `AI_MODEL` | Infisical ou var | Modelo. Vazio ⇒ o default do provedor |
+| `AI_BASE_URL` | Infisical ou var | Só para `custom`: endpoint OpenAI-compatible |
+| `AI_API_KEY` | Infisical ou secret | Chave do provedor |
+
+As quatro saem do Infisical (projeto `github-releases-k1-qq`, env `prod`), que as
+exporta como env; var/secret do repo é só o fallback para quando o OIDC não
+responde. Por isso todo consumo é `${{ env.X || vars.X }}` — escrever só
+`vars.X` sobrescreveria com string vazia o que o Infisical exportou.
 
 - **`groq`** — grátis, sem cartão. API OpenAI-compatible. Default:
   `llama-3.3-70b-versatile`.

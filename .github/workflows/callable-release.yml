@@ -229,9 +229,13 @@ jobs:
           GH_MODELS_TOKEN: ${{ env.GH_MODELS_TOKEN || secrets.GH_MODELS_TOKEN || env.GH_TOKEN || secrets.GH_TOKEN || github.token }}
           # Provedor do resumo por IA: groq | gemini | github | custom.
           # Vazio => github (o comportamento antigo). Ver o README.
-          AI_PROVIDER: ${{ vars.AI_PROVIDER }}
-          AI_MODEL: ${{ vars.AI_MODEL }}
-          AI_BASE_URL: ${{ vars.AI_BASE_URL }}
+          #
+          # `env.X || vars.X` e obrigatorio, nao estilo: escrever so `vars.X`
+          # sobrescreveria com string vazia o que o Infisical exportou quando a
+          # var do repo nao existe.
+          AI_PROVIDER: ${{ env.AI_PROVIDER || vars.AI_PROVIDER }}
+          AI_MODEL: ${{ env.AI_MODEL || vars.AI_MODEL }}
+          AI_BASE_URL: ${{ env.AI_BASE_URL || vars.AI_BASE_URL }}
           AI_API_KEY: ${{ env.AI_API_KEY || secrets.AI_API_KEY }}
           LLM_MODEL: ${{ vars.LLM_MODEL }}
           # Notificação de release no Discord (todas opcionais).

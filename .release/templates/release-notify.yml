@@ -16,11 +16,35 @@ on:
 jobs:
   discord:
     runs-on: ubuntu-latest
-    # Libera o GITHUB_TOKEN a usar o GitHub Models (resumo por IA), sem PAT.
     permissions:
       contents: read
+      # Libera o GITHUB_TOKEN a usar o GitHub Models (resumo por IA), sem PAT.
       models: read
+      # OIDC: emite o JWT que o Infisical troca pela config de IA.
+      id-token: write
     steps:
+      # Config do resumo por IA (AI_PROVIDER/AI_MODEL/AI_BASE_URL/AI_API_KEY)
+      # vinda do Infisical, exportada como env. Nao-fatal: se falhar, o passo
+      # seguinte cai nas vars/secrets do repo e, na ausencia delas, nas notas
+      # cruas — a release ja esta publicada de qualquer forma.
+      #
+      # ATENCAO: este workflow roda no ESPELHO PUBLICO, nao e um callable do
+      # repo `workflows`. O job_workflow_ref do JWT aponta para o espelho, entao
+      # a identity do Infisical precisa aceitar esses repos — uma trust
+      # condition amarrada so nos callables nao cobre este caso.
+      - name: Config de IA via Infisical (OIDC)
+        id: infisical
+        if: ${{ !contains(fromJSON('["false","0","off","no"]'), format('{0}', vars.CI_SECRETS_INFISICAL)) }}
+        continue-on-error: true
+        uses: Infisical/secrets-action@v1.0.16
+        with:
+          method: oidc
+          domain: https://secrets.mriqbox.com.br
+          identity-id: efec2ffe-55d0-479d-9535-8da6b0ea4665
+          project-slug: github-releases-k1-qq
+          env-slug: prod
+          oidc-audience: https://github.com/mri-Qbox-Brasil
+
       # O notificador e FONTE UNICA em mri-Qbox-Brasil/workflows
       # (.release/discord-release.js). Aqui ele e baixado em vez de instalado
       # via npm porque este job roda no espelho publico, que nao tem token do
@@ -53,10 +77,16 @@ jobs:
           # Provedor do resumo por IA: groq | gemini | github | custom.
           # Vazio => github, que no plano free da org responde 403 e cai nas
           # notas cruas. Ver a secao "Resumo por IA" no README.
-          AI_PROVIDER: ${{ vars.AI_PROVIDER }}
-          AI_MODEL: ${{ vars.AI_MODEL }}
-          AI_BASE_URL: ${{ vars.AI_BASE_URL }}
-          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          #
+          # Padrao `env.X || vars.X`: usa o valor vindo do Infisical (exportado
+          # como env pelo passo acima) e so cai na var/secret do repo se ele
+          # nao veio. Escrever so `vars.X` aqui SOBRESCREVERIA com string vazia
+          # o que o Infisical exportou — mesmo bug que ja mordeu o GH_TOKEN no
+          # mirror-release.
+          AI_PROVIDER: ${{ env.AI_PROVIDER || vars.AI_PROVIDER }}
+          AI_MODEL: ${{ env.AI_MODEL || vars.AI_MODEL }}
+          AI_BASE_URL: ${{ env.AI_BASE_URL || vars.AI_BASE_URL }}
+          AI_API_KEY: ${{ env.AI_API_KEY || secrets.AI_API_KEY }}
           LLM_MODEL: ${{ vars.LLM_MODEL }}
           # Chave atual (CI_RELEASE_NOTIFY_DISCORD) ou a var legada.
           DISCORD_RELEASE_NOTIFY: ${{ vars.CI_RELEASE_NOTIFY_DISCORD || vars.DISCORD_RELEASE_NOTIFY }}
