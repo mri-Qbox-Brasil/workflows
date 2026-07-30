@@ -5,7 +5,8 @@ on:
     inputs:
       node-version:
         type: string
-        default: '20'
+        # 22: o `workflows build` roda pnpm no web (pnpm 11 exige Node >= 22.13).
+        default: '22'
       # Diretorio do front (onde mora o package.json exibido na UI). Usado tanto
       # pelo set-version (bump do fallback de versao) quanto pelo build. Default
       # "web"; configure no repo chamador quando o front estiver em outro lugar.

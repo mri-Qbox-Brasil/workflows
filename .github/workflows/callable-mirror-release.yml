@@ -35,7 +35,8 @@ on:
         default: 'README.md'
       node-version:
         type: string
-        default: '20'
+        # 22: o `workflows build` roda pnpm no web (pnpm 11 exige Node >= 22.13).
+        default: '22'
       # Config do Infisical (fonte central de secrets via OIDC). NADA aqui e
       # secret: o Identity ID e so um identificador — a auth exige o JWT OIDC do
       # Actions casar com a trust condition (claim job_workflow_ref) da identity.
