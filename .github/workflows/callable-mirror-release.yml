@@ -170,17 +170,24 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           scope: '@mri-qbox-brasil'
 
-      # O CLI vem do registry PRIVADO da org (precisa do NODE_AUTH_TOKEN); os
-      # pacotes do semantic-release vem do npm publico. Passos separados para que
-      # uma falha de auth no registry da org nao se confunda com falha de rede.
-      - name: Install CLI @mri-qbox-brasil/workflows
-        run: npm install --no-save @mri-qbox-brasil/workflows
+      # O CLI vem do registry PRIVADO da org e o resto do npm publico. Este passo
+      # existe so para separar os diagnosticos: auth quebrada no registry da org
+      # falha aqui, sem se confundir com falha de rede no install seguinte.
+      - name: Verifica acesso ao registry da org
+        run: npm view @mri-qbox-brasil/workflows version
         env:
           NODE_AUTH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
 
-      - name: Install semantic-release e plugins
+      # TUDO num unico `npm install`. Sem package.json na raiz do resource, cada
+      # `npm install --no-save` reifica a arvore contra uma lista de "wanted" que
+      # so tem o que aquele comando pediu — e poda o que o comando anterior
+      # instalou. Era o que apagava o CLI ("added 307 packages, and removed 1
+      # package") e fazia o `npx workflows` do prepareCmd morrer com "could not
+      # determine executable to run".
+      - name: Install CLI e semantic-release
         run: |
           npm install --no-save \
+            @mri-qbox-brasil/workflows \
             semantic-release \
             @semantic-release/changelog \
             @semantic-release/commit-analyzer \
