@@ -56,6 +56,8 @@ Release para repos de **receita** do txAdmin (ex.: `mriTxRecipe`). Sem build de 
 ### `callable-release-notify.yml`
 Posta o embed da release no Discord, com o changelog reescrito por IA (ver "Resumo por IA" no README). É chamado por um wrapper fino que o `mirror-release` injeta no espelho público a cada release — o espelho é quem enxerga a release publicada e quem pode usar secrets de org no plano Free.
 
+O wrapper roda **só por `workflow_dispatch`**, disparado pelo próprio `mirror-release` logo depois de criar a release. Nada de `release: published` ali: como a release é criada com um PAT — e PAT dispara evento, ao contrário do `GITHUB_TOKEN` padrão — os dois gatilhos rodavam e saíam duas mensagens por release. Para re-notificar uma versão à mão, é o mesmo `workflow_dispatch` no espelho, informando a tag.
+
 O notificador em si (`.release/discord-release.js`) é baixado por `raw.githubusercontent` em vez de instalado via npm: o job roda no espelho, que não tem token do registry privado da org, e este repo é público. Segue `main` por padrão, então corrigir o notificador vale para todos os espelhos sem re-liberar nenhum.
 
 **Inputs:** `version` (obrigatório), `notifier-ref` (default: `main`), config do Infisical

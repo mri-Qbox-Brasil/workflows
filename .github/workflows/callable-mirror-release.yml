@@ -374,9 +374,19 @@ jobs:
           token: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
           make_latest: true
 
-      # Dispara a notificacao do Discord no PUBLICO explicitamente. Nao dependemos
-      # do evento release:published (que nao dispara quando a release e criada por
-      # token) — o workflow_dispatch sempre roda, e la o secret de org funciona.
+      # Dispara a notificacao do Discord no PUBLICO explicitamente, e este e o
+      # UNICO caminho: o template injetado nao escuta mais `release:published`.
+      #
+      # Ele escutava, junto com este dispatch, e saiam DUAS mensagens por release
+      # (~4s de diferenca). O comentario que morava aqui dizia que o evento "nao
+      # dispara quando a release e criada por token": isso vale para o
+      # GITHUB_TOKEN padrao, nao para o PAT que o step acima usa. PAT dispara
+      # evento normalmente, entao os dois gatilhos rodavam.
+      #
+      # Ficou o dispatch, e nao o evento, porque ele e determinista: passa a
+      # versao de proposito e sobrevive a uma eventual troca do GH_TOKEN por
+      # GITHUB_TOKEN ou token de App — caso em que depender do evento apagaria a
+      # notificacao em silencio.
       #
       # Chave: `vars.CI_RELEASE_NOTIFY_DISCORD=false` nao dispara a notificacao.
       - name: Dispara notificacao no publico
