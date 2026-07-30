@@ -17,7 +17,16 @@ if [ -d "$WEB_DIR" ]; then
   cd "$WEB_DIR"
   if [ -f "pnpm-lock.yaml" ]; then
     if ! command -v pnpm &> /dev/null; then
-      npm install -g pnpm@9
+      # pnpm 11 para acompanhar as maquinas de dev. No 9, um pnpm-workspace.yaml
+      # sem `packages` (a forma de configurar allowBuilds a partir do 10) e lido
+      # como manifesto de workspace e o install morre com "packages field missing
+      # or empty" — divergencia dev/CI que ja custou uma release.
+      #
+      # Do 10 em diante o pnpm NAO roda script de postinstall de dependencia por
+      # padrao. Pacote que precisa (esbuild, sharp) tem que estar em `allowBuilds`
+      # no pnpm-workspace.yaml do web, senao o build quebra — de forma barulhenta,
+      # nao silenciosa.
+      npm install -g pnpm@11
     fi
     pnpm install --prefer-offline
     pnpm run build
