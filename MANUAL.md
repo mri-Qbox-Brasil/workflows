@@ -42,7 +42,7 @@ Release no modelo **fonte privada → espelho público built-only**. Roda no rep
 
 **Inputs:** `public-repo` (required, `owner/repo` do espelho público), `resource-name` (default: nome do `public-repo`), `web-path` (default: `web`), `public-readme` (default: `README.md`), `node-version` (default: `20`)
 **Secrets:** `GH_TOKEN` (fallback do Infisical — Contents R&W no source **e** no público, Packages Read); `GH_MODELS_TOKEN`, `UPDATE_DISCORD_WEBHOOK`, `LOGO_MRIQBOX_URL`, `RESOURCE_MRIQBOX_URL`, `INVITE_DISCORD_URL`, `DOCS_MRIQBOX_URL` (opcionais)
-**Chaves:** `CI_RELEASE` (job), `CI_SECRETS_INFISICAL`, `CI_MIRROR_README`, `CI_MIRROR_NOTIFY_WORKFLOW`, `CI_MIRROR_PUBLIC_RELEASE`, `CI_RELEASE_NOTIFY_DISCORD`
+**Chaves:** `CI_RELEASE` (job), `CI_SECRETS_INFISICAL`, `CI_MIRROR_README`, `CI_MIRROR_NOTIFY_WORKFLOW`, `CI_MIRROR_PORT_PR_WORKFLOW` (*opt-in*), `CI_MIRROR_PUBLIC_RELEASE`, `CI_RELEASE_NOTIFY_DISCORD`
 
 **Requisitos no repo de fonte:** `fxmanifest.lua` com `version '__VERSION__'`; front em `web-path` com script `build` (saída em `web/build` ou output separado como `html/`); commits em Conventional Commits.
 
@@ -109,7 +109,14 @@ Disparado por um caller em `pull_request_target` (PR aberto) ou `workflow_dispat
 **Secrets:** `GH_TOKEN` (fallback do Infisical) — precisa de Contents R&W + Pull requests R&W no repo público **e** no privado de destino
 **Chaves:** `CI_PORT_PR` (job), `CI_SECRETS_INFISICAL`, `CI_PORT_PR_CLOSE_PUBLIC`
 
-Os textos dos comentários ficam versionados em `.github/messages/port-pr-thanks.md` e `port-pr-fail.md` (placeholders: `{{PR_NUMBER}}`, `{{TEAM_MENTION}}`, `{{PRIVATE_PR_URL}}`). Habilite num repo com a variável `PORT_TO_SOURCE=true` — ela é *opt-in* e mora no wrapper, então o porte segue desligado por padrão mesmo com `CI_PORT_PR` ligado. Detalhes e exemplo no `.github/SETUP.md`.
+Os textos dos comentários ficam versionados em `.github/messages/port-pr-thanks.md` e `port-pr-fail.md` (placeholders: `{{PR_NUMBER}}`, `{{TEAM_MENTION}}`, `{{PRIVATE_PR_URL}}`). Detalhes e exemplo no `.github/SETUP.md`.
+
+Há **dois jeitos** de o wrapper chegar no repo público, conforme o modelo do resource:
+
+- **Repo público versionado à mão** (wrapper vem do `script-template`, em `.github/workflows/port-pr.yml`): habilite com a variável `PORT_TO_SOURCE=true`. Ela é *opt-in* e mora no `if:` do wrapper, então o porte segue desligado mesmo com `CI_PORT_PR` ligado.
+- **Espelho built-only** (`mirror-release` limpa o público inteiro a cada release, então nada versionado à mão sobrevive): o `mirror-release` injeta `.release/templates/port-pr.yml` quando o **source** tem `CI_MIRROR_PORT_PR_WORKFLOW=true`. Aqui a injeção *é* o opt-in — o wrapper injetado não checa `PORT_TO_SOURCE`.
+
+No template do espelho, `apply-exclude` sai de `vars.CI_PORT_PR_EXCLUDE` (no repo **público**), com default `web/build/* html/*` — o output do build não existe na fonte, então um PR que o toca nunca aplicaria lá.
 
 ## Pacote npm
 

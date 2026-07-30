@@ -110,6 +110,7 @@ jobs:
           CI_SECRETS_INFISICAL: ${{ vars.CI_SECRETS_INFISICAL }}
           CI_MIRROR_README: ${{ vars.CI_MIRROR_README }}
           CI_MIRROR_NOTIFY_WORKFLOW: ${{ vars.CI_MIRROR_NOTIFY_WORKFLOW }}
+          CI_MIRROR_PORT_PR_WORKFLOW: ${{ vars.CI_MIRROR_PORT_PR_WORKFLOW }}
           CI_MIRROR_PUBLIC_RELEASE: ${{ vars.CI_MIRROR_PUBLIC_RELEASE }}
           CI_RELEASE_NOTIFY_DISCORD: ${{ vars.CI_RELEASE_NOTIFY_DISCORD }}
         run: |
@@ -117,6 +118,7 @@ jobs:
           echo "CI_SECRETS_INFISICAL=${CI_SECRETS_INFISICAL:-<vazio: ligado>}"
           echo "CI_MIRROR_README=${CI_MIRROR_README:-<vazio: ligado>}"
           echo "CI_MIRROR_NOTIFY_WORKFLOW=${CI_MIRROR_NOTIFY_WORKFLOW:-<vazio: ligado>}"
+          echo "CI_MIRROR_PORT_PR_WORKFLOW=${CI_MIRROR_PORT_PR_WORKFLOW:-<vazio: DESligado (opt-in)>}"
           echo "CI_MIRROR_PUBLIC_RELEASE=${CI_MIRROR_PUBLIC_RELEASE:-<vazio: ligado>}"
           echo "CI_RELEASE_NOTIFY_DISCORD=${CI_RELEASE_NOTIFY_DISCORD:-<vazio: ligado>}"
 
@@ -299,6 +301,19 @@ jobs:
           mkdir -p public_repo/.github/workflows
           gh api repos/mri-Qbox-Brasil/workflows/contents/.release/templates/release-notify.yml \
             --jq '.content' | base64 -d > public_repo/.github/workflows/release-notify.yml
+
+      # O porte tambem so pode rodar NO PUBLICO: e la que o PR da comunidade
+      # existe. Ao contrario do notificador, este e OPT-IN: portar e fechar PR
+      # de terceiro e visivel demais para ligar em todo espelho de uma vez.
+      # Chave: `vars.CI_MIRROR_PORT_PR_WORKFLOW=true` injeta o port-pr.yml.
+      - name: Injeta o workflow de porte de PR no publico
+        if: ${{ steps.meta.outputs.PUBLISHED == 'true' && vars.CI_MIRROR_PORT_PR_WORKFLOW == 'true' }}
+        env:
+          GH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+        run: |
+          mkdir -p public_repo/.github/workflows
+          gh api repos/mri-Qbox-Brasil/workflows/contents/.release/templates/port-pr.yml \
+            --jq '.content' | base64 -d > public_repo/.github/workflows/port-pr.yml
 
       - name: Commita o conteudo sincronizado
         id: sync_commit

@@ -79,6 +79,17 @@ As chaves **somam-se** aos inputs existentes (`web-lint`, `lua-tests`,
 `close-public-pr`, …): o input é o padrão que vem do template, a chave é o
 override por repositório. Basta um dos dois estar desligado para o passo não rodar.
 
+Uma única chave é **opt-in** — vazia significa desligada, e só `true` liga:
+
+| Chave | Liga | Callable |
+|---|---|---|
+| `CI_MIRROR_PORT_PR_WORKFLOW` | injetar o `port-pr.yml` no espelho público (definir no **source**) | `mirror-release` |
+
+Ela é a exceção porque portar e fechar o PR de um terceiro é visível demais para
+valer em todos os espelhos por padrão. Ligado o porte, o `CI_PORT_PR` e o
+`CI_PORT_PR_CLOSE_PUBLIC` (definidos no **público**, que é quem chama o
+`port-pr`) seguem a regra normal de desligar.
+
 Para desligar algo em um repo, sem sair do terminal:
 
 ```bash

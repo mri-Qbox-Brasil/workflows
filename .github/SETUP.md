@@ -73,6 +73,12 @@ Cada job e cada passo opcional dos callables tem uma chave própria, definida co
 | `CI_UPDATE_ACTIONS` | a atualização das versões das actions |
 | `CI_DOCS_NOTIFY` | o aviso ao repo de documentação |
 
+Uma chave é *opt-in* (vazia = desligada, só `true` liga):
+
+| Chave | Liga |
+|---|---|
+| `CI_MIRROR_PORT_PR_WORKFLOW` | injetar o `port-pr.yml` no espelho público (definir no **source**) |
+
 As chaves **somam-se** aos inputs do wrapper (`web-lint`, `lua-tests`,
 `close-public-pr`, …) e às variáveis *opt-in* já existentes (`PORT_TO_SOURCE`):
 basta uma das travas estar desligada para o passo não rodar. O input é o padrão
