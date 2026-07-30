@@ -56,6 +56,14 @@ variables → **Actions** → aba **Variables**).
   *skipped*, o motivo está ali. Chaves de job dispensam isso: o job some da
   execução. Em `lint` e `test` só existem chaves de job.
 
+> **Ao mexer numa dessas expressões, mantenha o `format('{0}', vars.X)`.**
+> Sem ele a chave se inverte: var inexistente vale `null`, e comparando tipos
+> diferentes o GitHub converte os dois lados para número — `null` e `"0"` viram
+> ambos `0`, então o `contains` dá `true` justamente quando a var está vazia, e o
+> passo é pulado em todo repo que não definiu nada. O `format` força string dos
+> dois lados. Foi o que deixou a frota inteira sem release entre 23/07 e 30/07 de
+> 2026, escondido atrás de um `startup_failure` que mascarava o sintoma.
+
 | Chave | Desliga | Callable |
 |---|---|---|
 | `CI_RELEASE` | o job de release inteiro | `release`, `mirror-release`, `recipe-release` |

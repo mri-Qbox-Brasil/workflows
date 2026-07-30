@@ -35,7 +35,7 @@ jobs:
   # sobrevive. Ver a secao "Chaves liga-desliga" no README.
   lint-web:
     name: Lint Web (ESLint)
-    if: ${{ contains(fromJSON('["true","1","on","yes"]'), vars.CI_LINT_WEB) || (inputs.web-lint && !contains(fromJSON('["false","0","off","no"]'), vars.CI_LINT_WEB)) }}
+    if: ${{ contains(fromJSON('["true","1","on","yes"]'), format('{0}', vars.CI_LINT_WEB)) || (inputs.web-lint && !contains(fromJSON('["false","0","off","no"]'), format('{0}', vars.CI_LINT_WEB))) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -60,7 +60,7 @@ jobs:
 
   lint-lua:
     name: Lint Lua (luacheck)
-    if: ${{ contains(fromJSON('["true","1","on","yes"]'), vars.CI_LINT_LUA) || (inputs.lua-lint && !contains(fromJSON('["false","0","off","no"]'), vars.CI_LINT_LUA)) }}
+    if: ${{ contains(fromJSON('["true","1","on","yes"]'), format('{0}', vars.CI_LINT_LUA)) || (inputs.lua-lint && !contains(fromJSON('["false","0","off","no"]'), format('{0}', vars.CI_LINT_LUA))) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
