@@ -23,7 +23,9 @@
 const webhook = process.env.DISCORD_RELEASE_WEBHOOK
 const apiToken = process.env.GITHUB_TOKEN || process.env.GH_TOKEN
 const modelsToken = process.env.GH_MODELS_TOKEN || apiToken
-const model = (process.env.LLM_MODEL || '').trim() || 'openai/gpt-4o-mini'
+// Vazio de proposito: cada provedor tem o proprio default (ver PROVIDERS).
+// LLM_MODEL e o nome antigo, mantido para nao quebrar quem ja o definiu.
+const model = (process.env.AI_MODEL || process.env.LLM_MODEL || '').trim()
 // Aponta o embed ao repo público quando fornecido (caso do espelho); senão ao
 // repositório atual.
 const repo = process.env.NOTIFY_REPO || process.env.GITHUB_REPOSITORY
@@ -60,40 +62,114 @@ async function ghJson(path) {
     return res.json()
 }
 
+const SYSTEM_PROMPT =
+    'Você é o redator de notas de versão do MRI QBOX, um conjunto de resources ' +
+    'para servidores FiveM (framework QBox). Recebe um changelog técnico gerado ' +
+    'por conventional commits e o reescreve como um resumo curto, claro e amigável ' +
+    'em português do Brasil, voltado para donos de servidor e jogadores. Regras: ' +
+    'use no máximo 5 bullets em markdown (use "- "); foque no que muda na prática; ' +
+    'não invente recursos que não estão no changelog; não inclua links, hashes de ' +
+    'commit nem nomes de autores; máximo ~800 caracteres; se não houver mudanças ' +
+    'relevantes para o usuário, escreva uma única linha de melhorias internas.'
+
+// ── Provedores de IA ────────────────────────────────────────────────────────
+// Escolhido por AI_PROVIDER; a chave vem de AI_API_KEY. Só o `github` funciona
+// sem chave própria, caindo no token do Actions — e é justamente ele que dá 403
+// em org no plano free, que foi o motivo de existir esta abstração.
+//
+//   groq    grátis, sem cartão. OpenAI-compatible.
+//   gemini  grátis com limite diário. Formato próprio de request/response.
+//   github  GitHub Models. Precisa de PAT com escopo `models`.
+//   custom  qualquer endpoint OpenAI-compatible, via AI_BASE_URL.
+//
+// Um provedor novo é só mais uma entrada aqui: `url`, `headers`, `body`, `read`.
+const PROVIDERS = {
+    groq: {
+        model: 'llama-3.3-70b-versatile',
+        url: () => 'https://api.groq.com/openai/v1/chat/completions',
+        headers: (key) => ({ Authorization: `Bearer ${key}` }),
+        body: (m, notes) => openaiBody(m, notes),
+        read: (d) => d.choices?.[0]?.message?.content,
+        needsKey: true,
+    },
+    gemini: {
+        model: 'gemini-2.5-flash',
+        // A chave vai na querystring, não no header — o Gemini não usa Bearer.
+        url: (m, key) =>
+            `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(key)}`,
+        headers: () => ({}),
+        body: (m, notes) => ({
+            system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+            contents: [{ role: 'user', parts: [{ text: userPrompt(notes) }] }],
+            generationConfig: { temperature: 0.5 },
+        }),
+        read: (d) => d.candidates?.[0]?.content?.parts?.map((p) => p.text).join(''),
+        needsKey: true,
+    },
+    github: {
+        model: 'openai/gpt-4o-mini',
+        url: () => 'https://models.github.ai/inference/chat/completions',
+        headers: (key) => ({ Authorization: `Bearer ${key}` }),
+        body: (m, notes) => openaiBody(m, notes),
+        read: (d) => d.choices?.[0]?.message?.content,
+        needsKey: false, // cai no GH_MODELS_TOKEN/GITHUB_TOKEN
+    },
+    custom: {
+        model: '',
+        url: () => env('AI_BASE_URL'),
+        headers: (key) => (key ? { Authorization: `Bearer ${key}` } : {}),
+        body: (m, notes) => openaiBody(m, notes),
+        read: (d) => d.choices?.[0]?.message?.content,
+        needsKey: false,
+    },
+}
+
+const userPrompt = (notes) => `Changelog técnico da ${tag}:\n\n${notes}`
+const openaiBody = (m, notes) => ({
+    model: m,
+    temperature: 0.5,
+    messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: userPrompt(notes) },
+    ],
+})
+
 // Reescreve o changelog técnico como um resumo curto e amigável em PT-BR.
 // Em qualquer falha, cai para as notas cruas (truncadas).
 async function aiSummary(rawNotes) {
     const fallback = (rawNotes || 'Nova versão publicada.').slice(0, FIELD_MAX)
-    if (!modelsToken || !rawNotes) return fallback
+    if (!rawNotes) return fallback
+
+    const chosen = (env('AI_PROVIDER') || 'github').toLowerCase()
+    const provider = PROVIDERS[chosen]
+    if (!provider) {
+        console.error(`[discord] AI_PROVIDER="${chosen}" desconhecido, usando notas cruas.`)
+        return fallback
+    }
+
+    // `github` aceita o token do Actions; os demais exigem AI_API_KEY própria.
+    const key = env('AI_API_KEY') || (chosen === 'github' ? modelsToken : '')
+    if (!key && provider.needsKey !== false) {
+        console.error(`[discord] sem AI_API_KEY para "${chosen}", usando notas cruas.`)
+        return fallback
+    }
+    if (chosen === 'custom' && !env('AI_BASE_URL')) {
+        console.error('[discord] AI_PROVIDER=custom sem AI_BASE_URL, usando notas cruas.')
+        return fallback
+    }
+    if (chosen === 'github' && !key) return fallback
+
+    const m = model || provider.model
     try {
-        const res = await fetch('https://models.github.ai/inference/chat/completions', {
+        const res = await fetch(provider.url(m, key), {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${modelsToken}` },
-            body: JSON.stringify({
-                model,
-                temperature: 0.5,
-                messages: [
-                    {
-                        role: 'system',
-                        content:
-                            'Você é o redator de notas de versão do MRI QBOX, um conjunto de resources ' +
-                            'para servidores FiveM (framework QBox). Recebe um changelog técnico gerado ' +
-                            'por conventional commits e o reescreve como um resumo curto, claro e amigável ' +
-                            'em português do Brasil, voltado para donos de servidor e jogadores. Regras: ' +
-                            'use no máximo 5 bullets em markdown (use "- "); foque no que muda na prática; ' +
-                            'não invente recursos que não estão no changelog; não inclua links, hashes de ' +
-                            'commit nem nomes de autores; máximo ~800 caracteres; se não houver mudanças ' +
-                            'relevantes para o usuário, escreva uma única linha de melhorias internas.',
-                    },
-                    { role: 'user', content: `Changelog técnico da ${tag}:\n\n${rawNotes}` },
-                ],
-            }),
+            headers: { 'Content-Type': 'application/json', ...provider.headers(key) },
+            body: JSON.stringify(provider.body(m, rawNotes)),
         })
-        if (!res.ok) throw new Error(`GitHub Models ${res.status}`)
-        const data = await res.json()
-        const text = data.choices?.[0]?.message?.content?.trim()
+        if (!res.ok) throw new Error(`${chosen} ${res.status}`)
+        const text = provider.read(await res.json())?.trim()
         if (!text) throw new Error('resposta vazia do modelo')
-        console.log('[discord] descrição gerada via IA.')
+        console.log(`[discord] descrição gerada via IA (${chosen}/${m}).`)
         return text.slice(0, FIELD_MAX)
     } catch (e) {
         console.error('[discord] IA falhou, usando notas cruas:', e.message)

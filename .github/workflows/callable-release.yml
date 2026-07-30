@@ -227,6 +227,12 @@ jobs:
           # escopo). Prefere um PAT dedicado; senão usa o GH_TOKEN (PAT pessoal do
           # release); em último caso o GITHUB_TOKEN (403 em org free -> notas cruas).
           GH_MODELS_TOKEN: ${{ env.GH_MODELS_TOKEN || secrets.GH_MODELS_TOKEN || env.GH_TOKEN || secrets.GH_TOKEN || github.token }}
+          # Provedor do resumo por IA: groq | gemini | github | custom.
+          # Vazio => github (o comportamento antigo). Ver o README.
+          AI_PROVIDER: ${{ vars.AI_PROVIDER }}
+          AI_MODEL: ${{ vars.AI_MODEL }}
+          AI_BASE_URL: ${{ vars.AI_BASE_URL }}
+          AI_API_KEY: ${{ env.AI_API_KEY || secrets.AI_API_KEY }}
           LLM_MODEL: ${{ vars.LLM_MODEL }}
           # Notificação de release no Discord (todas opcionais).
           # Kill switch por repo: a chave CI_RELEASE_NOTIFY_DISCORD (convenção

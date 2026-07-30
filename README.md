@@ -128,6 +128,39 @@ gh variable list --repo mri-Qbox-Brasil/mri_Qadmin      # conferir
 gh variable delete CI_LINT_LUA --repo mri-Qbox-Brasil/mri_Qadmin  # religar
 ```
 
+## Resumo por IA na notificação de release
+
+O notificador do Discord reescreve o changelog técnico como um resumo curto em
+PT-BR. O provedor é configurável — se a chamada falhar por qualquer motivo, o
+embed sai com as notas cruas e a release **nunca** é derrubada.
+
+| Variável | Onde | Para quê |
+|---|---|---|
+| `AI_PROVIDER` | var | `groq`, `gemini`, `github` ou `custom`. Vazio ⇒ `github` |
+| `AI_MODEL` | var | Modelo. Vazio ⇒ o default do provedor |
+| `AI_BASE_URL` | var | Só para `custom`: endpoint OpenAI-compatible |
+| `AI_API_KEY` | secret | Chave do provedor |
+
+- **`groq`** — grátis, sem cartão. API OpenAI-compatible. Default:
+  `llama-3.3-70b-versatile`.
+- **`gemini`** — grátis com limite diário. Formato próprio de request/response.
+  Default: `gemini-2.5-flash`.
+- **`github`** — GitHub Models. É o default histórico e o único que roda sem
+  chave própria, caindo no token do Actions — mas **em org no plano free ele
+  responde 403** e o resumo cai para as notas cruas. Para valer, precisa de um
+  PAT com escopo `models` em `GH_MODELS_TOKEN`.
+- **`custom`** — qualquer endpoint OpenAI-compatible via `AI_BASE_URL`.
+
+Ligar o Groq na org inteira:
+
+```bash
+gh variable set AI_PROVIDER --org mri-Qbox-Brasil --body groq --visibility all
+gh secret   set AI_API_KEY  --org mri-Qbox-Brasil --visibility all   # cola a chave
+```
+
+Um provedor novo é uma entrada a mais na tabela `PROVIDERS` do
+`.release/discord-release.js` (`url`, `headers`, `body`, `read`).
+
 ## Template de script
 
 Para criar um novo script FiveM, use o repositório `mri-Qbox-Brasil/script-template`, que vem pré-configurado com todos os workflows delegando para os callables deste repo.

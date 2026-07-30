@@ -50,6 +50,13 @@ jobs:
           NOTIFY_REPO: ${{ github.repository }}
           GITHUB_TOKEN: ${{ github.token }}
           GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN || github.token }}
+          # Provedor do resumo por IA: groq | gemini | github | custom.
+          # Vazio => github, que no plano free da org responde 403 e cai nas
+          # notas cruas. Ver a secao "Resumo por IA" no README.
+          AI_PROVIDER: ${{ vars.AI_PROVIDER }}
+          AI_MODEL: ${{ vars.AI_MODEL }}
+          AI_BASE_URL: ${{ vars.AI_BASE_URL }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
           LLM_MODEL: ${{ vars.LLM_MODEL }}
           # Chave atual (CI_RELEASE_NOTIFY_DISCORD) ou a var legada.
           DISCORD_RELEASE_NOTIFY: ${{ vars.CI_RELEASE_NOTIFY_DISCORD || vars.DISCORD_RELEASE_NOTIFY }}
