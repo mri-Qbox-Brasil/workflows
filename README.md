@@ -155,8 +155,20 @@ Ligar o Groq na org inteira:
 
 ```bash
 gh variable set AI_PROVIDER --org mri-Qbox-Brasil --body groq --visibility all
+gh variable set AI_MODEL    --org mri-Qbox-Brasil --body llama-3.3-70b-versatile --visibility all
 gh secret   set AI_API_KEY  --org mri-Qbox-Brasil --visibility all   # cola a chave
 ```
+
+> **Trocar `AI_PROVIDER` sem trocar `AI_MODEL` não funciona.** As duas são vars
+> de organização, e hoje `AI_MODEL=gemini-2.5-flash`. Apontar o provedor para o
+> Groq deixando esse valor manda um modelo do Gemini para a API do Groq: 400, e
+> o resumo volta para as notas cruas. Ou atualize as duas, ou apague `AI_MODEL`
+> e deixe o default do provedor valer.
+>
+> `AI_API_KEY`, `AI_BASE_URL` e `AI_MODEL` também são lidas pelo
+> `repo-bootstrap/.release/generate-docs.js` (SDK da OpenAI). Uma chave só serve
+> um provedor só: se os dois consumidores voltarem a rodar ao mesmo tempo,
+> separe as chaves antes.
 
 Um provedor novo é uma entrada a mais na tabela `PROVIDERS` do
 `.release/discord-release.js` (`url`, `headers`, `body`, `read`).
