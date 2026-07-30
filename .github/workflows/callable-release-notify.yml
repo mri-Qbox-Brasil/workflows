@@ -1,0 +1,165 @@
+name: Callable — Release Notify
+
+# Notifica o Discord quando uma release e publicada.
+#
+# Roda a partir de um wrapper NO REPO PUBLICO (espelho), unico lugar do fluxo
+# built-only que enxerga a release publica e que pode usar secrets de org no
+# plano Free. O wrapper e injetado pelo callable-mirror-release a cada release,
+# a partir de .release/templates/release-notify.yml.
+#
+# Nunca derruba nada: a release ja esta publicada quando este job roda.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Tag ou versao da release (v1.2.3 ou 1.2.3)'
+        type: string
+        required: true
+      # O notificador e FONTE UNICA em .release/discord-release.js deste repo.
+      # Baixado por raw em vez de instalado via npm porque o job roda no espelho
+      # publico, que nao tem token do registry privado da org — e este repo e
+      # publico, entao o raw responde sem autenticacao nenhuma.
+      #
+      # Segue `main` por padrao de proposito: correcao no notificador vale para
+      # todos os espelhos sem precisar re-liberar cada um.
+      notifier-ref:
+        description: 'Ref deste repo de onde vem o discord-release.js'
+        type: string
+        default: 'main'
+      # Config do Infisical (fonte central de secrets via OIDC). Nada aqui e
+      # secret: o Identity ID e so um identificador — a auth exige o JWT OIDC do
+      # Actions casar com a trust condition da identity.
+      #
+      # ATENCAO: o chamador e o ESPELHO PUBLICO, entao o job_workflow_ref do JWT
+      # aponta para o wrapper la, nao para este arquivo. Uma trust condition
+      # amarrada so nos callables deste repo NAO cobre este caso.
+      infisical-domain:
+        type: string
+        default: 'https://secrets.mriqbox.com.br'
+      infisical-identity:
+        type: string
+        default: 'efec2ffe-55d0-479d-9535-8da6b0ea4665'
+      infisical-project:
+        type: string
+        default: 'github-releases-k1-qq'
+      infisical-env:
+        type: string
+        default: 'prod'
+      infisical-audience:
+        type: string
+        default: 'https://github.com/mri-Qbox-Brasil'
+    secrets:
+      # Webhook do canal de updates. Sem ela, o notificador so pula.
+      UPDATE_DISCORD_WEBHOOK:
+        required: false
+      # Chave do provedor de IA do resumo. Sem ela (e sem a do Infisical), o
+      # embed sai com as notas cruas.
+      AI_API_KEY:
+        required: false
+      # PAT com escopo `models`, so para AI_PROVIDER=github. Sem ele cai no
+      # GITHUB_TOKEN, que da 403 em org no plano free.
+      GH_MODELS_TOKEN:
+        required: false
+      # Branding opcional do embed. Cada campo so entra se existir.
+      LOGO_MRIQBOX_URL:
+        required: false
+      RESOURCE_MRIQBOX_URL:
+        required: false
+      INVITE_DISCORD_URL:
+        required: false
+      DOCS_MRIQBOX_URL:
+        required: false
+
+jobs:
+  discord:
+    # Chave do job: `vars.CI_RELEASE_NOTIFY_DISCORD=false` desliga a notificacao
+    # neste repositorio. O `format('{0}', ...)` NAO e enfeite — sem ele a chave
+    # se inverte e o job e pulado em todo repo que nao definiu a var (var
+    # inexistente vale null, e null e "0" viram ambos 0 na coercao). Ver a secao
+    # "Chaves liga-desliga" no README.
+    if: ${{ !contains(fromJSON('["false","0","off","no"]'), format('{0}', vars.CI_RELEASE_NOTIFY_DISCORD)) }}
+    runs-on: ubuntu-latest
+    # ATENCAO — o WRAPPER precisa declarar ESTE MESMO bloco, inteiro. Declarar
+    # `permissions:` num job SUBSTITUI as permissoes padrao, nao soma: todo
+    # escopo omitido vira `none`, e um reusable workflow que peca mais do que o
+    # chamador concede morre em startup_failure, sem job e sem log.
+    permissions:
+      contents: read
+      # Libera o GITHUB_TOKEN a usar o GitHub Models (AI_PROVIDER=github).
+      models: read
+      # OIDC: emite o JWT que o Infisical troca pela config de IA. So e
+      # concedido aqui se o chamador tambem conceder.
+      id-token: write
+    steps:
+      - name: Chaves (vars) deste repositorio
+        env:
+          CI_SECRETS_INFISICAL: ${{ vars.CI_SECRETS_INFISICAL }}
+        run: |
+          echo "CI_RELEASE_NOTIFY_DISCORD=<ligado: o job rodou>"
+          echo "CI_SECRETS_INFISICAL=${CI_SECRETS_INFISICAL:-<vazio: ligado>}"
+
+      # Config do resumo por IA (AI_PROVIDER/AI_MODEL/AI_BASE_URL/AI_API_KEY)
+      # vinda do Infisical, exportada como env. Nao-fatal: se falhar, o passo de
+      # notificacao cai nas vars/secrets do repo e, na falta delas, nas notas
+      # cruas.
+      - name: Config de IA via Infisical (OIDC)
+        id: infisical
+        if: ${{ !contains(fromJSON('["false","0","off","no"]'), format('{0}', vars.CI_SECRETS_INFISICAL)) }}
+        continue-on-error: true
+        uses: Infisical/secrets-action@v1.0.16
+        with:
+          method: oidc
+          domain: ${{ inputs.infisical-domain }}
+          identity-id: ${{ inputs.infisical-identity }}
+          project-slug: ${{ inputs.infisical-project }}
+          env-slug: ${{ inputs.infisical-env }}
+          oidc-audience: ${{ inputs.infisical-audience }}
+
+      # Se o download falhar, o job apenas nao notifica — a release ja esta
+      # publicada de qualquer forma.
+      - name: Baixa o notificador de release
+        id: fetch
+        env:
+          NOTIFIER_REF: ${{ inputs.notifier-ref }}
+        run: |
+          mkdir -p .release
+          if curl -fsSL --retry 3 --retry-delay 2 \
+            "https://raw.githubusercontent.com/mri-Qbox-Brasil/workflows/${NOTIFIER_REF}/.release/discord-release.js" \
+            -o .release/discord-release.js; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::nao baixou o notificador; pulando a notificacao."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Notifica Discord
+        if: steps.fetch.outputs.ok == 'true'
+        run: node .release/discord-release.js "${{ inputs.version }}"
+        env:
+          # Dentro do callable, github.repository e o repo CHAMADOR — o espelho.
+          NOTIFY_REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN || github.token }}
+          # Provedor do resumo por IA: groq | gemini | github | custom.
+          # Vazio => github, que no plano free da org responde 403 e cai nas
+          # notas cruas. Ver a secao "Resumo por IA" no README.
+          #
+          # Padrao `env.X || vars.X`: usa o valor vindo do Infisical (exportado
+          # como env pelo passo acima) e so cai na var/secret do repo se ele nao
+          # veio. Escrever so `vars.X` SOBRESCREVERIA com string vazia o que o
+          # Infisical exportou — mesmo bug que ja mordeu o GH_TOKEN no
+          # mirror-release.
+          AI_PROVIDER: ${{ env.AI_PROVIDER || vars.AI_PROVIDER }}
+          AI_MODEL: ${{ env.AI_MODEL || vars.AI_MODEL }}
+          AI_BASE_URL: ${{ env.AI_BASE_URL || vars.AI_BASE_URL }}
+          AI_API_KEY: ${{ env.AI_API_KEY || secrets.AI_API_KEY }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
+          # Var legada; a chave atual (CI_RELEASE_NOTIFY_DISCORD) ja e o `if:`
+          # do job. Mantida para quem ainda a tenha definida.
+          DISCORD_RELEASE_NOTIFY: ${{ vars.DISCORD_RELEASE_NOTIFY }}
+          DISCORD_RELEASE_WEBHOOK: ${{ env.UPDATE_DISCORD_WEBHOOK || secrets.UPDATE_DISCORD_WEBHOOK }}
+          LOGO_MRIQBOX_URL: ${{ env.LOGO_MRIQBOX_URL || secrets.LOGO_MRIQBOX_URL }}
+          RESOURCE_MRIQBOX_URL: ${{ env.RESOURCE_MRIQBOX_URL || secrets.RESOURCE_MRIQBOX_URL }}
+          INVITE_DISCORD_URL: ${{ env.INVITE_DISCORD_URL || secrets.INVITE_DISCORD_URL }}
+          DOCS_MRIQBOX_URL: ${{ env.DOCS_MRIQBOX_URL || secrets.DOCS_MRIQBOX_URL }}

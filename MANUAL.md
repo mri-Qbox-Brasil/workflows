@@ -53,6 +53,17 @@ Release para repos de **receita** do txAdmin (ex.: `mriTxRecipe`). Sem build de 
 **Secrets:** `GH_TOKEN`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET` (todos com fallback do Infisical); `AWS_S3_ENDPOINT`, `AWS_S3_PATH` (opcionais, p/ R2)
 **Chaves:** `CI_RELEASE` (job), `CI_SECRETS_INFISICAL`, `CI_RECIPE_UPLOAD`, `CI_RECIPE_SYNC`, `CI_RECIPE_MANIFEST`
 
+### `callable-release-notify.yml`
+Posta o embed da release no Discord, com o changelog reescrito por IA (ver "Resumo por IA" no README). É chamado por um wrapper fino que o `mirror-release` injeta no espelho público a cada release — o espelho é quem enxerga a release publicada e quem pode usar secrets de org no plano Free.
+
+O notificador em si (`.release/discord-release.js`) é baixado por `raw.githubusercontent` em vez de instalado via npm: o job roda no espelho, que não tem token do registry privado da org, e este repo é público. Segue `main` por padrão, então corrigir o notificador vale para todos os espelhos sem re-liberar nenhum.
+
+**Inputs:** `version` (obrigatório), `notifier-ref` (default: `main`), config do Infisical
+**Secrets:** `UPDATE_DISCORD_WEBHOOK`, `AI_API_KEY`, `GH_MODELS_TOKEN`, `LOGO_MRIQBOX_URL`, `RESOURCE_MRIQBOX_URL`, `INVITE_DISCORD_URL`, `DOCS_MRIQBOX_URL` — todos opcionais, todos com fallback do Infisical
+**Chaves:** `CI_RELEASE_NOTIFY_DISCORD` (job), `CI_SECRETS_INFISICAL`
+
+> A identity do Infisical precisa aceitar os **repos espelho**: o wrapper mora lá, então o `job_workflow_ref` do JWT aponta para o espelho e não para este repo. Trust condition amarrada só nos callables não cobre este caso — o OIDC falha, e o resumo cai nas notas cruas sem derrubar nada.
+
 ### `callable-lint.yml`
 Roda ESLint no diretório web e/ou luacheck no Lua. Cada linter é ligado por input — ou pela chave, que aqui é *tri-state* (vazia ⇒ vale o input; `true` liga; `false` desliga).
 
