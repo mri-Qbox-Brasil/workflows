@@ -91,8 +91,13 @@ O `test.yml` do template nasce com os **dois** eixos desligados: o `script-templ
 Atualiza versões das GitHub Actions e Node.js LTS nos workflows, abrindo PR com as mudanças.
 
 **Inputs:** `node-version`, `pr-team`
-**Secrets:** `GH_TOKEN` (fallback do Infisical)
+**Secrets:** `GH_TOKEN` (fallback do Infisical), `PACKAGES_TOKEN` (opcional, só para consumir o pacote privado de fora da org `mri-Qbox-Brasil`)
 **Chaves:** `CI_UPDATE_ACTIONS` (job), `CI_SECRETS_INFISICAL`
+
+Só mexe em pins de major (`@v4`, `@6`). Referências a *reusable workflows*
+(`owner/repo/.github/workflows/x.yml@ref`), SHAs e branches ficam intocadas — e
+antes de reescrever, confere que a tag flutuante de major realmente existe no
+repositório da action.
 
 ### `callable-repo-dispatch.yml`
 Envia evento `update-manual` para o repo de documentação quando `MANUAL.md` é atualizado.
