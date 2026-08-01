@@ -7,6 +7,14 @@ if [ ! -z "${GITHUB_ACTIONS:-}" ]; then
     git config user.email "github-actions[bot]@users.noreply.github.com"
 fi
 
+# Uma action pode publicar o major como tag flutuante (actions/checkout@v7) ou
+# como branch (cycjimmy/semantic-release-action@v6). Checar so tags daria falso
+# negativo na segunda forma.
+ref_exists() {
+    gh api "repos/$1/git/ref/tags/$2" -q .ref >/dev/null 2>&1 && return 0
+    gh api "repos/$1/git/ref/heads/$2" -q .ref >/dev/null 2>&1
+}
+
 echo "🔍 Buscando actions em .github/workflows/..."
 
 # Lista os arquivos de workflow (.yml e .yaml). `find` em vez de glob: com
@@ -79,10 +87,13 @@ for ACTION_FULL in "${ACTIONS[@]:-}"; do
         continue
     fi
 
-    # Nem toda action publica a tag flutuante de major. Apontar para uma ref que
-    # não existe quebraria TODOS os workflows do repo, então confirmamos antes.
-    if ! gh api "repos/$ACTION/git/ref/tags/$LATEST_TAG" -q .ref >/dev/null 2>&1; then
-        echo "⚠️ $ACTION não publica a tag de major '$LATEST_TAG' (release: $FULL_LATEST_TAG). Mantendo $CURRENT_VERSION."
+    # Nem toda action publica a ref flutuante de major — a Infisical/secrets-action,
+    # por exemplo, so tem tags exatas. Apontar para uma ref inexistente quebra o
+    # job em "Prepare all required actions", antes de qualquer passo rodar, e
+    # `continue-on-error` nao salva: derruba TODOS os workflows do repo. Ja
+    # aconteceu em producao, entao confirmamos antes de reescrever.
+    if ! ref_exists "$ACTION" "$LATEST_TAG"; then
+        echo "⚠️ $ACTION não publica a ref de major '$LATEST_TAG' (release: $FULL_LATEST_TAG). Mantendo $CURRENT_VERSION."
         continue
     fi
 
