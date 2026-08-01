@@ -90,9 +90,22 @@ O `test.yml` do template nasce com os **dois** eixos desligados: o `script-templ
 ### `callable-update-actions.yml`
 Atualiza versões das GitHub Actions e Node.js LTS nos workflows, abrindo PR com as mudanças.
 
-**Inputs:** `node-version`, `pr-team`
-**Secrets:** `GH_TOKEN` (fallback do Infisical), `PACKAGES_TOKEN` (opcional, só para consumir o pacote privado de fora da org `mri-Qbox-Brasil`)
+**Inputs:** `node-version`, `pr-team`, `script-ref` (ref usada no fallback por `raw`)
+**Secrets:** `GH_TOKEN` (**obrigatório na prática**, fallback do Infisical), `PACKAGES_TOKEN` (opcional, só para consumir o pacote privado de fora da org `mri-Qbox-Brasil`)
 **Chaves:** `CI_UPDATE_ACTIONS` (job), `CI_SECRETS_INFISICAL`
+
+> Este é o único callable que **não** funciona com o `GITHUB_TOKEN` padrão. O
+> push toca `.github/workflows/`, e o GitHub recusa isso vindo de um GitHub App
+> (`refusing to allow a GitHub App to create or update workflow ... without
+> 'workflows' permission`) — e `workflows` não existe como escopo declarável em
+> `permissions:`. Só um **PAT com escopo `workflow`** resolve. Um preflight
+> falha cedo, com mensagem explícita, quando nenhum token chega.
+
+Fora da org `mri-Qbox-Brasil` o registry privado responde 401 e o OIDC do
+Infisical não vale. Nesses repos: `PACKAGES_TOKEN` (ou o fallback automático por
+`raw`, já que este repo é público), `GH_TOKEN` como secret da org, e
+`CI_SECRETS_INFISICAL=false` para não gastar um passo com um OIDC que não pode
+ser emitido.
 
 Só mexe em pins de major (`@v4`, `@6`). Referências a *reusable workflows*
 (`owner/repo/.github/workflows/x.yml@ref`), SHAs e branches ficam intocadas — e

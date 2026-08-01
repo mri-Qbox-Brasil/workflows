@@ -83,14 +83,25 @@ jobs:
           env-slug: ${{ inputs.infisical-env }}
           oidc-audience: ${{ inputs.infisical-audience }}
 
-      # `github.token` no fim de cada fallback: sem ele, um repo sem GH_TOKEN e
-      # sem Infisical morria logo no checkout com "Input required and not
-      # supplied: token". O token padrao basta para clonar, empurrar a branch e
-      # abrir o PR — o job ja pede contents/pull-requests write acima.
+      # Este job so funciona com PAT, e nao ha como contornar: o push toca
+      # `.github/workflows/`, e o GITHUB_TOKEN padrao e um GitHub App — o GitHub
+      # recusa com "refusing to allow a GitHub App to create or update workflow
+      # ... without `workflows` permission", e `workflows` nao existe como escopo
+      # declaravel em `permissions:`. Sem esse preflight a run ia ate o fim e
+      # morria no push, com o erro escondido no meio do log.
+      - name: Preflight — token capaz de escrever em .github/workflows/
+        env:
+          RESOLVED_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+        run: |
+          if [ -z "$RESOLVED_TOKEN" ]; then
+            echo "::error::Sem GH_TOKEN (nem pelo Infisical, nem por secret do repo/org). Este job precisa de um PAT com escopo 'workflow' no secret GH_TOKEN — o GITHUB_TOKEN padrao nao pode alterar arquivos de workflow."
+            exit 1
+          fi
+
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          token: ${{ env.GH_TOKEN || secrets.GH_TOKEN || github.token }}
+          token: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
 
       - uses: actions/setup-node@v7
         with:
@@ -124,5 +135,5 @@ jobs:
             npx workflows update-actions
           fi
         env:
-          GITHUB_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN || github.token }}
+          GITHUB_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
           PR_TEAM: ${{ inputs.pr-team }}
