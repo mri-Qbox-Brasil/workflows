@@ -9,6 +9,10 @@ on:
       pr-team:
         type: string
         default: ''
+      # Ref usada no fallback por raw (ver o passo do curl mais abaixo).
+      script-ref:
+        type: string
+        default: 'main'
       # Config do Infisical (fonte central de secrets via OIDC). Nada aqui e
       # secret: o Identity ID e so um identificador — a auth exige o JWT OIDC do
       # Actions casar com a trust condition (repository_owner) da identity.
@@ -95,12 +99,30 @@ jobs:
           scope: '@mri-qbox-brasil'
 
       - name: Install workflows
+        id: install
+        continue-on-error: true
         run: npm install --no-save @mri-qbox-brasil/workflows
         env:
           NODE_AUTH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN || secrets.PACKAGES_TOKEN || github.token }}
 
+      # De fora da org o registry privado responde 401 e nao ha token que resolva
+      # sem provisionar um PAT em cada org. Este repo e publico e o script nao tem
+      # dependencia nenhuma, entao baixamos direto — mesmo padrao que o
+      # callable-release-notify ja usa para os repos espelho.
+      - name: Fallback — script direto do repo publico
+        if: steps.install.outcome == 'failure'
+        run: |
+          echo "⚠️ npm install falhou (registry privado inacessivel); baixando o script por raw."
+          curl -fsSL "https://raw.githubusercontent.com/mri-Qbox-Brasil/workflows/${{ inputs.script-ref }}/.release/update-actions.sh" \
+            -o "$RUNNER_TEMP/update-actions.sh"
+
       - name: Run update
-        run: npx workflows update-actions
+        run: |
+          if [ -f "$RUNNER_TEMP/update-actions.sh" ]; then
+            bash "$RUNNER_TEMP/update-actions.sh"
+          else
+            npx workflows update-actions
+          fi
         env:
           GITHUB_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN || github.token }}
           PR_TEAM: ${{ inputs.pr-team }}
