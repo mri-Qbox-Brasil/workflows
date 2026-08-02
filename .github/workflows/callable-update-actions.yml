@@ -115,6 +115,11 @@ jobs:
         run: npm install --no-save @mri-qbox-brasil/workflows
         env:
           NODE_AUTH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN || secrets.PACKAGES_TOKEN || github.token }}
+          # Repo com `.npmrc` proprio (ex.: mri_botcreator) vence o user-level que
+          # o setup-node escreve, e o de la referencia ${PACKAGES_TOKEN}. Sem esta
+          # linha o token resolvia vazio e o install caia em 401 mesmo com o PAT
+          # certo em maos.
+          PACKAGES_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN || secrets.PACKAGES_TOKEN }}
 
       # De fora da org o registry privado responde 401 e nao ha token que resolva
       # sem provisionar um PAT em cada org. Este repo e publico e o script nao tem
