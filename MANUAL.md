@@ -101,11 +101,15 @@ Atualiza versões das GitHub Actions e Node.js LTS nos workflows, abrindo PR com
 > `permissions:`. Só um **PAT com escopo `workflow`** resolve. Um preflight
 > falha cedo, com mensagem explícita, quando nenhum token chega.
 
-Fora da org `mri-Qbox-Brasil` o registry privado responde 401 e o OIDC do
-Infisical não vale. Nesses repos: `PACKAGES_TOKEN` (ou o fallback automático por
-`raw`, já que este repo é público), `GH_TOKEN` como secret da org, e
-`CI_SECRETS_INFISICAL=false` para não gastar um passo com um OIDC que não pode
-ser emitido.
+**Consumindo de outra org** (ex.: `MRI-Bot`): o registry privado responde 401,
+então o `PACKAGES_TOKEN` ou o fallback automático por `raw` cobrem a leitura do
+script. Já o OIDC exige um ajuste — o GitHub **só emite** ID token com audience
+que bate com o dono do repo (`Can't issue ID_TOKEN for audience`), então o
+wrapper precisa passar `infisical-audience: 'https://github.com/<a-org-dele>'`.
+Do lado do Infisical, `boundAudiences` e o valor de cada `boundClaims` são listas
+OR (`.split(", ").some(...)`), então basta acrescentar a audience e o
+`repository_owner` da outra org à identity existente — **vírgula e espaço**, que
+é o separador exato. Não precisa de identity nova nem de afrouxar o claim.
 
 Só mexe em pins de major (`@v4`, `@6`). Referências a *reusable workflows*
 (`owner/repo/.github/workflows/x.yml@ref`), SHAs e branches ficam intocadas — e
