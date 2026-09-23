@@ -15,28 +15,38 @@ if (!version) {
     process.exit(0);
 }
 
-// ── 1) fxmanifest.lua: injeta a versao no placeholder __VERSION__ ────────────
-// Em release real o manifest passa a ter a versao concreta e a UI a usa direto.
-// Atencao: este arquivo NAO deve ser commitado de volta — o source mantem o
-// placeholder __VERSION__ para que builds de fonte continuem funcionando.
+// ── 1) fxmanifest.lua: grava a versao lancada ────────────────────────────────
+// O manifest e commitado de volta pelo release, entao o source sempre reflete a
+// ultima versao lancada. Aceita os dois estados do arquivo:
+//   - placeholder __VERSION__ (repo ainda nao migrado / primeira release);
+//   - versao concreta de uma release anterior (`version '1.2.3'`), que e
+//     substituida pela nova.
 const manifest = 'fxmanifest.lua';
+// Linha `version '...'` / `version "..."` / `version('...')` no inicio da linha
+// (nao casa `fx_version`, que tem prefixo).
+const versionLine = /^([ \t]*version[ \t]*\(?[ \t]*)(['"])[^'"\n]*\2/m;
 
 if (!fs.existsSync(manifest)) {
     console.warn(`[set-version] ${manifest} nao encontrado — pulando injecao no manifest.`);
 } else {
-    let content = fs.readFileSync(manifest, 'utf8');
-    if (!content.includes('__VERSION__')) {
-        console.warn(`[set-version] Placeholder "__VERSION__" ausente em ${manifest}. ` +
-            'Defina version "__VERSION__" para que a versao seja injetada no build.');
+    const content = fs.readFileSync(manifest, 'utf8');
+    let updated;
+    if (content.includes('__VERSION__')) {
+        updated = content.split('__VERSION__').join(version);
+    } else if (versionLine.test(content)) {
+        updated = content.replace(versionLine, (_, head, q) => `${head}${q}${version}${q}`);
     } else {
-        content = content.split('__VERSION__').join(version);
-        fs.writeFileSync(manifest, content);
-        console.log(`[set-version] Versao ${version} injetada em ${manifest}`);
+        console.warn(`[set-version] Nenhuma linha "version" em ${manifest}. ` +
+            "Defina version '__VERSION__' para que a versao seja injetada.");
+    }
+    if (updated !== undefined) {
+        fs.writeFileSync(manifest, updated);
+        console.log(`[set-version] Versao ${version} gravada em ${manifest}`);
     }
 }
 
 // ── 2) <web-dir>/package.json: sincroniza o fallback exibido na UI ───────────
-// Em builds de fonte (onde o fxmanifest ainda e __VERSION__) a UI cai no
+// Em builds de fonte com o fxmanifest ainda em __VERSION__ a UI cai no
 // pkg.version baked no bundle. Sem este sync esse fallback nunca e bumpado e a
 // versao fica congelada. Roda independente do bloco do manifest acima.
 const pkgPath = path.join(webDir, 'package.json');

@@ -187,8 +187,9 @@ jobs:
               '@semantic-release/release-notes-generator',
               '@semantic-release/changelog',
               ['@semantic-release/exec', {
-                // set-version injeta a versao no placeholder __VERSION__ do
-                // fxmanifest e bumpa o package.json do front; build empacota o
+                // set-version grava a versao no fxmanifest (placeholder
+                // __VERSION__ ou versao anterior) e bumpa o package.json do
+                // front; build empacota o
                 // resource em dist/<name>.zip.
                 prepareCmd: "npx workflows set-version ${nextRelease.version} \"$WEB_PATH\" && npx workflows build \"$RESOURCE_NAME\" \"$WEB_PATH\"",
                 // Notifica o Discord só quando uma versão é de fato publicada.
@@ -197,11 +198,11 @@ jobs:
                 // que já foi publicada; o próprio script sempre sai com 0.
                 successCmd: "npx workflows notify-discord '${nextRelease.version}' || true"
               }],
-              // Commita de volta o bump do package.json do front e o CHANGELOG,
-              // para que builds de fonte reflitam a última versão (issue #3).
-              // NUNCA inclui fxmanifest.lua aqui: o source mantém __VERSION__.
+              // Commita de volta o fxmanifest.lua, o bump do package.json do
+              // front e o CHANGELOG, para que o source sempre reflita a última
+              // versão lançada.
               ['@semantic-release/git', {
-                assets: [(process.env.WEB_PATH || 'web') + '/package.json', 'CHANGELOG.md'],
+                assets: ['fxmanifest.lua', (process.env.WEB_PATH || 'web') + '/package.json', 'CHANGELOG.md'],
                 message: 'chore(release): ${nextRelease.version} [skip ci]'
               }],
               ['@semantic-release/github', {

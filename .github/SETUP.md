@@ -131,8 +131,8 @@ jobs:
 
 Roda no repo de **fonte privada** (`<resource>-source`) e publica o resource
 buildado (Lua + `web/build`, **sem** o fonte da UI) no repo **público**. Exige
-`version '__VERSION__'` no `fxmanifest.lua` (a versão é injetada só no build,
-nunca commitada de volta).
+uma linha `version` no `fxmanifest.lua` (`'__VERSION__'` ou uma versão concreta);
+a cada release ela é atualizada e commitada de volta com a versão lançada.
 
 ```yaml
 jobs:
@@ -326,7 +326,7 @@ agradecimento). O time marcado na falha vem da variável de org `PR_TEAM`.
 
 - [ ] Secret `GH_TOKEN` disponível (herdado da org ou criado no repo) — fallback do Infisical
 - [ ] Todo job que chama um callable declara `id-token: write` nas `permissions`
-- [ ] `fxmanifest.lua` contém `version '__VERSION__'`
+- [ ] `fxmanifest.lua` contém uma linha `version` (`'__VERSION__'` ou versão concreta)
 - [ ] `DOC_NAME` / `DOC_SLUG` definidos (nome e slug na documentação)
 - [ ] (Opcional) chaves `CI_*` definidas para o que este repo não deve rodar
 - [ ] Commits seguem Conventional Commits
