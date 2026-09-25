@@ -119,7 +119,7 @@ repositório da action.
 ### `callable-repo-dispatch.yml`
 Envia evento `update-manual` para o repo de documentação quando `MANUAL.md` é atualizado.
 
-**Inputs:** `friendly-name` (vazio ⇒ nome do repo), `publish-as` (slug de publicação; existe para os repos `-source`, cujo manual deve sair com o nome do repo público), `doc-file` (default: `MANUAL.md`), `docs-repository` (default: `mri-Qbox-Brasil/docs-mriqbox`)
+**Inputs:** `friendly-name` (vazio ⇒ nome do repo), `publish-as` (slug de publicação; existe para os repos `-source`, cujo manual deve sair com o nome do repo público), `doc-file` (default: `MANUAL.md`), `docs-repository` (default: `mri-Qbox-Brasil/mriqbox-site`)
 **Secrets:** `GH_TOKEN` (fallback do Infisical)
 **Chaves:** `CI_DOCS_NOTIFY` (job), `CI_SECRETS_INFISICAL`
 
