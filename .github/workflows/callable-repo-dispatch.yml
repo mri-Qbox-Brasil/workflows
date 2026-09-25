@@ -29,7 +29,7 @@ on:
         default: ''
       docs-repository:
         type: string
-        default: 'mri-Qbox-Brasil/docs-mriqbox'
+        default: 'mri-Qbox-Brasil/mriqbox-site'
       # Config do Infisical (fonte central de secrets via OIDC). Nada aqui e
       # secret: o Identity ID e so um identificador — a auth exige o JWT OIDC do
       # Actions casar com a trust condition (repository_owner) da identity.
