@@ -182,3 +182,12 @@ Um provedor novo é uma entrada a mais na tabela `PROVIDERS` do
 ## Template de script
 
 Para criar um novo script FiveM, use o repositório `mri-Qbox-Brasil/script-template`, que vem pré-configurado com todos os workflows delegando para os callables deste repo.
+
+### Template Sync e o `GH_TOKEN` do Infisical
+
+O Infisical exporta o PAT como `GH_TOKEN` no ambiente do job. O
+`actions-template-sync` faz `gh auth login --with-token`, que o `gh` recusa
+enquanto existe um `GH_TOKEN` no ambiente ("The value of the GH_TOKEN
+environment variable is being used for authentication"). Por isso o callable
+copia o token para um output mascarado, zera o `GH_TOKEN` só no passo do sync e
+entrega o token pelos inputs `source_gh_token`/`target_gh_token`.

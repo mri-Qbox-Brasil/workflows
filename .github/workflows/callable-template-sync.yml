@@ -101,12 +101,24 @@ jobs:
 
       # Abre um PR com as mudanças do template (não força push na branch).
       # Respeita o .templatesyncignore do repo de destino (raiz ou .github/).
+      - name: Token do sync
+        id: token
+        env:
+          FALLBACK_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+        run: |
+          token="${GH_TOKEN:-$FALLBACK_TOKEN}"
+          echo "::add-mask::$token"
+          echo "value=$token" >> "$GITHUB_OUTPUT"
+
       - name: Sync template
         uses: AndreasAugustin/actions-template-sync@v2
+        env:
+          GH_TOKEN: ''
         with:
           source_repo_path: ${{ inputs.source-repo }}
           upstream_branch: ${{ inputs.source-branch }}
-          github_token: ${{ env.GH_TOKEN || secrets.GH_TOKEN || github.token }}
+          source_gh_token: ${{ steps.token.outputs.value }}
+          target_gh_token: ${{ steps.token.outputs.value }}
           pr_title: "chore(template): sync with template"
           pr_labels: "template-sync"
           pr_body: "Atualização automática do template base"
