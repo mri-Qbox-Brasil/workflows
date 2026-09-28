@@ -183,11 +183,19 @@ Um provedor novo é uma entrada a mais na tabela `PROVIDERS` do
 
 Para criar um novo script FiveM, use o repositório `mri-Qbox-Brasil/script-template`, que vem pré-configurado com todos os workflows delegando para os callables deste repo.
 
-### Template Sync e o `GH_TOKEN` do Infisical
+### Template Sync: só infraestrutura
 
-O Infisical exporta o PAT como `GH_TOKEN` no ambiente do job. O
-`actions-template-sync` faz `gh auth login --with-token`, que o `gh` recusa
-enquanto existe um `GH_TOKEN` no ambiente ("The value of the GH_TOKEN
-environment variable is being used for authentication"). Por isso o callable
-copia o token para um output mascarado, zera o `GH_TOKEN` só no passo do sync e
-entrega o token pelos inputs `source_gh_token`/`target_gh_token`.
+O `callable-template-sync.yml` copia do template **apenas** as pastas de
+infraestrutura (input `paths`, padrão `.github .release`) e abre ou atualiza o
+PR `chore(template): sync with template` (branch `chore/template-sync`). O
+código de exemplo do template (`client/`, `server/`, `shared/`,
+`fxmanifest.lua`, README, MANUAL, CHANGELOG, `database.sql`) nunca entra: ele
+serve só para criar resources novos.
+
+- `.templatesyncignore` do repo (raiz ou `.github/`, sintaxe de gitignore)
+  lista exceções dentro dessas pastas; o que casar volta ao estado do repo.
+- `force-deletion: true` apaga, dentro de `paths`, o que saiu do template
+  (respeitando o ignore). Padrão desligado.
+- Variantes do template (`react`, `react-qadmin-plugin`) via `source-branch`.
+- O token (PAT com escopo `workflow`, do Infisical ou `secrets.GH_TOKEN`) é
+  necessário porque o `GITHUB_TOKEN` não pode alterar `.github/workflows/`.

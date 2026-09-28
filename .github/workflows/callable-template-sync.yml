@@ -12,18 +12,12 @@ on:
       destination-branch:
         type: string
         default: 'main'
-      # Por padrao a action NAO apaga nada: ela so adiciona/atualiza. Um workflow
-      # removido do template sobrevive para sempre nos repos que ja o tinham.
-      # Ligar isto faz o sync propagar tambem as REMOCOES.
-      #
-      # Custa uma mudanca de semantica: `is_force_deletion` nao funciona com os
-      # pull params padrao, entao eles trocam junto (ver abaixo) e o sync deixa
-      # de resolver conflito sozinho a favor do template (`-X theirs`) — o PR
-      # passa a trazer conflito de verdade quando o repo divergiu no mesmo
-      # arquivo. Por isso o default e false: ligue por repo, conferindo o
-      # primeiro PR. O .templatesyncignore continua protegendo o que for listado.
+      paths:
+        description: 'Pastas/arquivos de infraestrutura sincronizados do template (separados por espaço)'
+        type: string
+        default: '.github .release'
       force-deletion:
-        description: 'Propaga remocoes do template (apaga arquivos deletados na origem)'
+        description: 'Apaga, dentro de paths, o que não existe mais no template (o .templatesyncignore continua protegendo)'
         type: boolean
         default: false
       # Config do Infisical (fonte central de secrets via OIDC). Nada aqui e
@@ -93,14 +87,6 @@ jobs:
           env-slug: ${{ inputs.infisical-env }}
           oidc-audience: ${{ inputs.infisical-audience }}
 
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ inputs.destination-branch }}
-          fetch-depth: 0
-          token: ${{ env.GH_TOKEN || secrets.GH_TOKEN || github.token }}
-
-      # Abre um PR com as mudanças do template (não força push na branch).
-      # Respeita o .templatesyncignore do repo de destino (raiz ou .github/).
       - name: Token do sync
         id: token
         env:
@@ -110,21 +96,74 @@ jobs:
           echo "::add-mask::$token"
           echo "value=$token" >> "$GITHUB_OUTPUT"
 
-      - name: Sync template
-        uses: AndreasAugustin/actions-template-sync@v2
-        env:
-          GH_TOKEN: ''
+      - uses: actions/checkout@v7
         with:
-          source_repo_path: ${{ inputs.source-repo }}
-          upstream_branch: ${{ inputs.source-branch }}
-          source_gh_token: ${{ steps.token.outputs.value }}
-          target_gh_token: ${{ steps.token.outputs.value }}
-          pr_title: "chore(template): sync with template"
-          pr_labels: "template-sync"
-          pr_body: "Atualização automática do template base"
-          is_force_deletion: ${{ inputs.force-deletion }}
-          # A action documenta que `is_force_deletion` NAO funciona com os pull
-          # params default; com ele ligado, `--squash` e `-X theirs` saem e entra
-          # `--no-edit`. Com ele desligado, mantemos exatamente o default da
-          # action — o comportamento de hoje nao muda em repo nenhum.
-          git_remote_pull_params: ${{ inputs.force-deletion && '--allow-unrelated-histories --strategy=recursive --no-edit' || '--allow-unrelated-histories --squash --strategy=recursive -X theirs' }}
+          ref: ${{ inputs.destination-branch }}
+          token: ${{ steps.token.outputs.value }}
+
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.source-repo }}
+          ref: ${{ inputs.source-branch }}
+          token: ${{ steps.token.outputs.value }}
+          path: .template-source
+
+      - name: Copia a infraestrutura do template
+        id: copy
+        env:
+          SYNC_PATHS: ${{ inputs.paths }}
+          FORCE_DELETION: ${{ inputs.force-deletion }}
+        run: |
+          set -euo pipefail
+          src=.template-source
+          delete=()
+          [ "$FORCE_DELETION" = "true" ] && delete=(--delete)
+
+          read -ra paths <<< "$SYNC_PATHS"
+          for p in "${paths[@]}"; do
+            if [ -d "$src/$p" ]; then
+              mkdir -p "$p"
+              rsync -a "${delete[@]}" --exclude=.git "$src/$p/" "$p/"
+            elif [ -f "$src/$p" ]; then
+              install -D -m 644 "$src/$p" "$p"
+            fi
+          done
+
+          ignore=""
+          for f in .templatesyncignore .github/.templatesyncignore; do
+            if [ -f "$f" ]; then ignore="$f"; break; fi
+          done
+          if [ -n "$ignore" ]; then
+            git status --porcelain=v1 -z --untracked-files=all -- "${paths[@]}" \
+              | while IFS= read -r -d '' entry; do printf '%s\0' "${entry:3}"; done \
+              | git -c core.excludesFile="$ignore" check-ignore --no-index -z --stdin \
+              | while IFS= read -r -d '' file; do
+                  if git cat-file -e "HEAD:$file" 2>/dev/null; then
+                    git checkout HEAD -- "$file"
+                  else
+                    rm -f "$file"
+                  fi
+                done
+          fi
+
+          {
+            echo "add-paths<<EOF"
+            printf '%s\n' "${paths[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Abre ou atualiza o PR
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ steps.token.outputs.value }}
+          base: ${{ inputs.destination-branch }}
+          branch: chore/template-sync
+          delete-branch: true
+          add-paths: ${{ steps.copy.outputs.add-paths }}
+          commit-message: 'chore(template): sync with template'
+          title: 'chore(template): sync with template'
+          body: |
+            Atualização automática da infraestrutura do template (`${{ inputs.source-repo }}@${{ inputs.source-branch }}`).
+
+            Só entram: `${{ inputs.paths }}`. Exceções do repo ficam no `.templatesyncignore`.
+          labels: template-sync
