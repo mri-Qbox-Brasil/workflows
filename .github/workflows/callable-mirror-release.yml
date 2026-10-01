@@ -33,6 +33,13 @@ on:
       public-readme:
         type: string
         default: 'README.md'
+      # true: o publico recebe o codigo completo (inclusive o fonte da UI) com o
+      # build novo, em vez de so o resource buildado. O zip da release continua
+      # sem o fonte da UI. Para resources sob licenca que exige o fonte publico
+      # (ex.: ox_inventory, GPL-3.0).
+      public-source:
+        type: boolean
+        default: false
       node-version:
         type: string
         # 22: o `workflows build` roda pnpm no web (pnpm 11 exige Node >= 22.13).
@@ -280,11 +287,27 @@ jobs:
         run: find public_repo -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
 
       - name: Copia o resource buildado
-        if: steps.meta.outputs.PUBLISHED == 'true'
+        if: ${{ steps.meta.outputs.PUBLISHED == 'true' && !inputs.public-source }}
         env:
           RESOURCE_NAME: ${{ steps.rn.outputs.name }}
         # dist/<name>/ ja e so o output do build, sem o fonte da UI.
         run: rsync -av "dist/${RESOURCE_NAME}/" public_repo/
+
+      # public-source: o checkout do source ja tem o build novo em <web>/build
+      # (o `workflows build` builda no lugar), entao vai o source inteiro.
+      - name: Copia o codigo completo (public-source)
+        if: ${{ steps.meta.outputs.PUBLISHED == 'true' && inputs.public-source }}
+        run: |
+          rsync -av \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='.release' \
+            --exclude='node_modules' \
+            --exclude='dist' \
+            --exclude='public_repo' \
+            --exclude='.VERSION' \
+            --exclude='.NOTES.md' \
+            ./ public_repo/
 
       # Chave: `vars.CI_MIRROR_README=false` deixa o publico manter o README dele.
       - name: Copia o README do publico

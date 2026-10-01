@@ -40,7 +40,7 @@ Executa build do recurso FiveM e cria release semântico no GitHub. Modelo de **
 ### `callable-mirror-release.yml`
 Release no modelo **fonte privada → espelho público built-only**. Roda no repo de fonte privada (`<resource>-source`): calcula a versão por commits, grava no `fxmanifest.lua` (placeholder `__VERSION__` ou versão anterior, commitado de volta) via `workflows set-version`, builda o front e empacota o resource com `workflows build` (sem o fonte da UI), sincroniza o resource buildado para o repo **público** e cria a release pública com o zip. Não expõe o fonte no público. Notifica o Discord (opcional, apontando à release pública).
 
-**Inputs:** `public-repo` (required, `owner/repo` do espelho público), `resource-name` (default: nome do `public-repo`), `web-path` (default: `web`), `public-readme` (default: `README.md`), `node-version` (default: `20`)
+**Inputs:** `public-repo` (required, `owner/repo` do espelho público), `resource-name` (default: nome do `public-repo`), `web-path` (default: `web`), `public-readme` (default: `README.md`), `public-source` (default: `false`; `true` manda o código completo, inclusive o fonte da UI, para o público — para licença que exige fonte aberto, como GPL; o zip continua sem o fonte da UI), `node-version` (default: `20`)
 **Secrets:** `GH_TOKEN` (fallback do Infisical — Contents R&W no source **e** no público, Packages Read); `GH_MODELS_TOKEN`, `UPDATE_DISCORD_WEBHOOK`, `LOGO_MRIQBOX_URL`, `RESOURCE_MRIQBOX_URL`, `INVITE_DISCORD_URL`, `DOCS_MRIQBOX_URL` (opcionais)
 **Chaves:** `CI_RELEASE` (job), `CI_SECRETS_INFISICAL`, `CI_MIRROR_README`, `CI_MIRROR_NOTIFY_WORKFLOW`, `CI_MIRROR_PORT_PR_WORKFLOW` (*opt-in*), `CI_MIRROR_PUBLIC_RELEASE`, `CI_RELEASE_NOTIFY_DISCORD`
 

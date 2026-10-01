@@ -74,6 +74,14 @@ if [ -d "$WEB_DIR/build" ]; then
   cp -r "$WEB_DIR/build" "dist/$SCRIPT_NAME/$WEB_DIR/build"
 fi
 
+# Assets servidos direto da pasta do front, fora do build (ex.: ox_inventory
+# serve as imagens dos itens de web/images, referenciadas no fxmanifest).
+if [ -d "$WEB_DIR/images" ]; then
+  echo "Copiando $WEB_DIR/images..."
+  mkdir -p "dist/$SCRIPT_NAME/$WEB_DIR"
+  cp -r "$WEB_DIR/images" "dist/$SCRIPT_NAME/$WEB_DIR/images"
+fi
+
 # Compacta
 echo "Compactando..."
 cd dist

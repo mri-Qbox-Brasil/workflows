@@ -150,6 +150,7 @@ jobs:
       # web-path: web                              # opcional (default: web)
       # resource-name: mri_Qdoorlock               # opcional (default: nome do public-repo)
       # public-readme: README.md                   # opcional (use MANUAL.md p/ publicar o manual)
+      # public-source: true                        # opcional: público com o código completo (licença GPL)
 ```
 
 O `GH_TOKEN` precisa de **Contents R&W** no source **e** no público (o
