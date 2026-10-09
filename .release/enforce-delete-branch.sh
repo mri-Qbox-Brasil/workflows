@@ -15,9 +15,11 @@ set -euo pipefail
 #   ORG ........................ org alvo (default: mri-Qbox-Brasil).
 #   DRY_RUN .................... "true" = so leitura, nenhum PATCH.
 #
-# Permissao necessaria no token: administration (repo settings) write —
-# fine-grained "Administration: Read and write" na org; sem ela o GET
-# funciona mas o PATCH responde 403. O dry-run precisa so de leitura.
+# Permissao necessaria no token: App mri-action-runner com Administration
+# write (o workflow gera o token via Infisical OIDC +
+# actions/create-github-app-token, permissoes administration write +
+# metadata read). Nada de PAT. Sem ela o GET funciona mas o PATCH
+# responde 403. O dry-run precisa so de leitura.
 #
 # Saida: resumo no $GITHUB_STEP_SUMMARY (quando definido) + stdout.
 # Exit 1 se algum GET/PATCH falhar — mas tenta todos antes de sair.

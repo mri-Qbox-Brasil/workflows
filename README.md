@@ -208,7 +208,9 @@ todo repo novo nasce com `delete_branch_on_merge=false`. O workflow
 em todo repo não arquivado da org, sem tocar em nenhuma outra configuração
 (a lógica está em `.release/enforce-delete-branch.sh`, com modo dry-run).
 
-A escrita usa `secrets.GH_TOKEN`, que precisa de permissão de **administration**
-nos repos (fine-grained "Administration: Read and write"). Para conferir sem
+A escrita usa o App **mri-action-runner** com permissão de **Administration
+write** (token gerado no workflow via Infisical OIDC +
+`actions/create-github-app-token`, com `vars.APP_CLIENT_ID` e
+`APP_PRIVATE_KEY`; nada de PAT). Para conferir sem
 mudar nada: Actions → Enforce delete branch on merge → Run workflow → `dry_run:
 true`.

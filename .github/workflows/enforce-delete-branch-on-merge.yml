@@ -5,11 +5,18 @@ name: Enforce delete branch on merge
 # religa o flag em todo repo nao arquivado da org, sem tocar em nenhuma
 # outra configuracao (o PATCH manda so esse campo).
 #
-# Token de escrita: secrets.GH_TOKEN (secret da org). Ele precisa de
-# permissao de administration nos repos — fine-grained "Administration:
-# Read and write" na org (classic: admin). Sem ela o GET funciona mas o
-# PATCH responde 403. O GITHUB_TOKEN do job fica no minimo (contents: read)
-# e serve so para o checkout; a logica usa o GH_TOKEN.
+# Token de escrita: App mri-action-runner (Administration write), via
+# Infisical (OIDC) + actions/create-github-app-token. Nada de PAT: nenhum
+# secrets.GH_TOKEN neste workflow. A chave privada do App vem do Infisical
+# (projeto mri-actions-runner-lhv-f, env prod, segredo APP_PRIVATE_KEY
+# exportado como env) e o App ID vem de vars.APP_CLIENT_ID (variable do
+# repo workflows, nao secret). Permissoes minimas do token: administration
+# write + metadata read. Sem continue-on-error nos dois passos: se o
+# Infisical ou o token falharem, o job fica VERMELHO (falha visivel, sem
+# cair para PAT em silencio). O GITHUB_TOKEN do job fica no minimo
+# (contents: read + id-token: write — o id-token e o OIDC que o Infisical
+# troca pelos secrets) e serve so para o checkout; a logica usa o GH_TOKEN
+# do passo app-token.
 #
 # Rodar manual com dry-run (so leitura, nenhum PATCH):
 #   Actions > Enforce delete branch on merge > Run workflow > dry_run: true
@@ -29,8 +36,29 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v7
+
+      - name: Secrets via Infisical (OIDC)
+        uses: Infisical/secrets-action@v1.0.16
+        with:
+          method: oidc
+          domain: https://secrets.mriqbox.com.br
+          identity-id: efec2ffe-55d0-479d-9535-8da6b0ea4665
+          project-slug: mri-actions-runner-lhv-f
+          env-slug: prod
+          oidc-audience: https://github.com/mri-Qbox-Brasil
+
+      - name: Token do App mri-action-runner
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ env.APP_PRIVATE_KEY }}
+          owner: mri-Qbox-Brasil
+          permission-administration: write
+          permission-metadata: read
 
       - name: Torna o script executavel
         run: chmod +x .release/enforce-delete-branch.sh
@@ -38,5 +66,5 @@ jobs:
       - name: Varre a org e liga delete_branch_on_merge
         run: ./.release/enforce-delete-branch.sh
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           DRY_RUN: ${{ inputs.dry_run }}
