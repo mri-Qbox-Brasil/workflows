@@ -199,3 +199,16 @@ serve só para criar resources novos.
 - Variantes do template (`react`, `react-qadmin-plugin`) via `source-branch`.
 - O token (PAT com escopo `workflow`, do Infisical ou `secrets.GH_TOKEN`) é
   necessário porque o `GITHUB_TOKEN` não pode alterar `.github/workflows/`.
+
+## Delete branch on merge (varredura diária)
+
+O GitHub não tem default de org para "Automatically delete head branches", então
+todo repo novo nasce com `delete_branch_on_merge=false`. O workflow
+`enforce-delete-branch-on-merge.yml` roda todo dia às 06:17 UTC e religa o flag
+em todo repo não arquivado da org, sem tocar em nenhuma outra configuração
+(a lógica está em `.release/enforce-delete-branch.sh`, com modo dry-run).
+
+A escrita usa `secrets.GH_TOKEN`, que precisa de permissão de **administration**
+nos repos (fine-grained "Administration: Read and write"). Para conferir sem
+mudar nada: Actions → Enforce delete branch on merge → Run workflow → `dry_run:
+true`.

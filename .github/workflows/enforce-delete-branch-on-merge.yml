@@ -1,0 +1,42 @@
+name: Enforce delete branch on merge
+
+# O GitHub nao tem default de org para "Automatically delete head branches":
+# repo novo nasce com delete_branch_on_merge=false. Esta varredura diaria
+# religa o flag em todo repo nao arquivado da org, sem tocar em nenhuma
+# outra configuracao (o PATCH manda so esse campo).
+#
+# Token de escrita: secrets.GH_TOKEN (secret da org). Ele precisa de
+# permissao de administration nos repos — fine-grained "Administration:
+# Read and write" na org (classic: admin). Sem ela o GET funciona mas o
+# PATCH responde 403. O GITHUB_TOKEN do job fica no minimo (contents: read)
+# e serve so para o checkout; a logica usa o GH_TOKEN.
+#
+# Rodar manual com dry-run (so leitura, nenhum PATCH):
+#   Actions > Enforce delete branch on merge > Run workflow > dry_run: true
+
+on:
+  schedule:
+    - cron: '17 6 * * *'  # diario 06:17 UTC, fora do pico
+  workflow_dispatch:      # manual; no schedule o dry_run vale false
+    inputs:
+      dry_run:
+        description: 'So listar o que seria ligado, sem PATCH (true/false)'
+        type: boolean
+        default: false
+
+jobs:
+  enforce:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Torna o script executavel
+        run: chmod +x .release/enforce-delete-branch.sh
+
+      - name: Varre a org e liga delete_branch_on_merge
+        run: ./.release/enforce-delete-branch.sh
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          DRY_RUN: ${{ inputs.dry_run }}
