@@ -35,8 +35,10 @@ on:
         type: string
         default: 'https://github.com/mri-Qbox-Brasil'
     secrets:
-      # Agora opcional: com o Infisical o token vem por OIDC. Continua aceito como
-      # fallback (secrets: inherit) enquanto a migracao nao termina.
+      # Fonte primaria: token do App mri-action-runner (emitido no passo
+      # "Token do App", owner mri-Qbox-Brasil). PAT segue como fallback: via
+      # Infisical por OIDC (env.GH_TOKEN) ou via secrets: inherit.
+      # Continua aceito como fallback enquanto a migracao nao termina.
       GH_TOKEN:
         required: false
       # PAT (conta pessoal) com escopo `models` para o GitHub Models. Sem ele,
@@ -122,10 +124,26 @@ jobs:
           env-slug: ${{ inputs.infisical-env }}
           oidc-audience: ${{ inputs.infisical-audience }}
 
+      # Token do App mri-action-runner (FONTE PRIMARIA; o PAT segue como
+      # fallback nas cadeias `app || env.GH_TOKEN || secrets.GH_TOKEN`). Sem
+      # continue-on-error: se a emissao falhar, o job fica VERMELHO em vez de
+      # cair para PAT em silencio — mesmo modelo do enforce-delete-branch.
+      - name: Token do App mri-action-runner
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ env.APP_PRIVATE_KEY }}
+          owner: mri-Qbox-Brasil
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
+          permission-metadata: read
+
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          token: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+          token: ${{ steps.app-token.outputs.token || env.GH_TOKEN || secrets.GH_TOKEN }}
 
       - uses: actions/setup-node@v7
         with:
@@ -133,13 +151,16 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           scope: '@mri-qbox-brasil'
 
-      # O CLI vem do registry PRIVADO da org e o resto do npm publico. Este passo
-      # existe so para separar os diagnosticos: auth quebrada no registry da org
-      # falha aqui, sem se confundir com falha de rede no install seguinte.
+      # O CLI vem do registry da org (pacote @mri-qbox-brasil/workflows agora
+      # PUBLICO) e o resto do npm publico. npm SEMPRE com o GITHUB_TOKEN do job
+      # (permissions packages: write, que cobre read): registry nao aceita token
+      # de instalacao de App. Este passo existe so para separar os
+      # diagnosticos: auth quebrada no registry falha aqui, sem se confundir
+      # com falha de rede no install seguinte.
       - name: Verifica acesso ao registry da org
         run: npm view @mri-qbox-brasil/workflows version
         env:
-          NODE_AUTH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ github.token }}
 
       # TUDO num unico `npm install`. Sem package.json na raiz do resource, cada
       # `npm install --no-save` reifica a arvore contra uma lista de "wanted" que
@@ -159,7 +180,7 @@ jobs:
             @semantic-release/git \
             @semantic-release/github
         env:
-          NODE_AUTH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ github.token }}
 
       # Nome do resource (pasta/zip do build). Resolvido aqui em vez de dentro do
       # prepareCmd do semantic-release, que ficava com um `cut` embutido.
@@ -218,8 +239,9 @@ jobs:
         env:
           # Padrao `env.X || secrets.X`: usa o valor vindo do Infisical (exportado
           # como env pelo passo OIDC); se ausente (Infisical fora), cai no secret.
-          GITHUB_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+          # O token do App e a fonte primaria; o PAT segue como fallback.
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token || env.GH_TOKEN || secrets.GH_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ github.token }}
           # Diretorio do front, consumido pelo set-version, build e git assets.
           WEB_PATH: ${{ inputs.web-path }}
           # Nome do resource, consumido pelo build (pasta e zip em dist/).

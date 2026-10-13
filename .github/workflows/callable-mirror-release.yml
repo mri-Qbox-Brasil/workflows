@@ -65,8 +65,10 @@ on:
         type: string
         default: 'https://github.com/mri-Qbox-Brasil'
     secrets:
-      # PAT da org com Contents R&W no source E no publico, e Packages Read.
-      # Agora opcional: com o Infisical vem por OIDC. Aceito como fallback.
+      # Fonte primaria: token do App mri-action-runner (emitido no passo
+      # "Token do App", owner mri-Qbox-Brasil). PAT da org (Contents R&W no
+      # source E no publico) segue como fallback: via Infisical por OIDC
+      # (env.GH_TOKEN) ou via secrets: inherit (secrets.GH_TOKEN).
       GH_TOKEN:
         required: false
       # PAT (conta pessoal) com escopo `models` para o GitHub Models. Sem ele,
@@ -149,6 +151,23 @@ jobs:
           env-slug: ${{ inputs.infisical-env }}
           oidc-audience: ${{ inputs.infisical-audience }}
 
+      # Token do App mri-action-runner (FONTE PRIMARIA; o PAT segue como
+      # fallback nas cadeias `app || env.GH_TOKEN || secrets.GH_TOKEN`). Sem
+      # continue-on-error: se a emissao falhar, o job fica VERMELHO em vez de
+      # cair para PAT em silencio — mesmo modelo do enforce-delete-branch.
+      - name: Token do App mri-action-runner
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ env.APP_PRIVATE_KEY }}
+          owner: mri-Qbox-Brasil
+          permission-contents: write
+          permission-pull-requests: write
+          permission-actions: write
+          permission-issues: write
+          permission-metadata: read
+
       # Checkout do source com o GITHUB_TOKEN nativo: ele sempre tem acesso ao
       # proprio repo (e permissao contents:write para o commit/tag de release do
       # semantic-release). O GH_TOKEN so e necessario para operar no repo
@@ -162,7 +181,7 @@ jobs:
       # Sem ele, o sync para o repo publico falha. Nao imprime o valor.
       - name: Verifica GH_TOKEN
         env:
-          GH: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+          GH: ${{ steps.app-token.outputs.token || env.GH_TOKEN || secrets.GH_TOKEN }}
         run: |
           if [ -z "$GH" ]; then
             echo "::warning::GH_TOKEN vazio/nao entregue. O sync para o repo publico vai falhar."
@@ -177,13 +196,16 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           scope: '@mri-qbox-brasil'
 
-      # O CLI vem do registry PRIVADO da org e o resto do npm publico. Este passo
-      # existe so para separar os diagnosticos: auth quebrada no registry da org
-      # falha aqui, sem se confundir com falha de rede no install seguinte.
+      # O CLI vem do registry da org (pacote @mri-qbox-brasil/workflows agora
+      # PUBLICO) e o resto do npm publico. npm SEMPRE com o GITHUB_TOKEN do job
+      # (permissions packages: read): registry nao aceita token de instalacao
+      # de App. Este passo existe so para separar os diagnosticos: auth
+      # quebrada no registry falha aqui, sem se confundir com falha de rede no
+      # install seguinte.
       - name: Verifica acesso ao registry da org
         run: npm view @mri-qbox-brasil/workflows version
         env:
-          NODE_AUTH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ github.token }}
 
       # TUDO num unico `npm install`. Sem package.json na raiz do resource, cada
       # `npm install --no-save` reifica a arvore contra uma lista de "wanted" que
@@ -203,7 +225,7 @@ jobs:
             @semantic-release/git \
             @semantic-release/github
         env:
-          NODE_AUTH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ github.token }}
 
       - name: Resolve o nome do resource
         id: rn
@@ -244,8 +266,8 @@ jobs:
       - name: Executa o semantic-release (source privado)
         run: npx semantic-release --extends ./.release/release.config.cjs
         env:
-          GITHUB_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token || env.GH_TOKEN || secrets.GH_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ github.token }}
           WEB_PATH: ${{ inputs.web-path }}
           RESOURCE_NAME: ${{ steps.rn.outputs.name }}
 
@@ -277,7 +299,7 @@ jobs:
           # Prefere o GH_TOKEN do Infisical (exportado como env); cai no secret.
           # NAO usar so secrets.GH_TOKEN aqui: sobrescreveria o do Infisical com
           # vazio (era o bug que quebrava o clone do repo publico).
-          GH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token || env.GH_TOKEN || secrets.GH_TOKEN }}
         run: git clone "https://x-access-token:${GH_TOKEN}@github.com/${PUBLIC_REPO}.git" public_repo
 
       # O publico e built-only: o conteudo e substituido inteiro a cada release,
@@ -327,7 +349,7 @@ jobs:
       - name: Injeta o workflow de notificacao no publico
         if: ${{ steps.meta.outputs.PUBLISHED == 'true' && !contains(fromJSON('["false","0","off","no"]'), format('{0}', vars.CI_MIRROR_NOTIFY_WORKFLOW)) }}
         env:
-          GH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token || env.GH_TOKEN || secrets.GH_TOKEN }}
         run: |
           mkdir -p public_repo/.github/workflows
           gh api repos/mri-Qbox-Brasil/workflows/contents/.release/templates/release-notify.yml \
@@ -340,7 +362,7 @@ jobs:
       - name: Injeta o workflow de porte de PR no publico
         if: ${{ steps.meta.outputs.PUBLISHED == 'true' && vars.CI_MIRROR_PORT_PR_WORKFLOW == 'true' }}
         env:
-          GH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token || env.GH_TOKEN || secrets.GH_TOKEN }}
         run: |
           mkdir -p public_repo/.github/workflows
           gh api repos/mri-Qbox-Brasil/workflows/contents/.release/templates/port-pr.yml \
@@ -394,7 +416,7 @@ jobs:
           name: v${{ steps.meta.outputs.VERSION }}
           body_path: .NOTES.md
           files: dist/${{ steps.rn.outputs.name }}.zip
-          token: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+          token: ${{ steps.app-token.outputs.token || env.GH_TOKEN || secrets.GH_TOKEN }}
           make_latest: true
 
       # Dispara a notificacao do Discord no PUBLICO explicitamente, e este e o
@@ -416,7 +438,7 @@ jobs:
         if: ${{ steps.meta.outputs.PUBLISHED == 'true' && !contains(fromJSON('["false","0","off","no"]'), format('{0}', vars.CI_RELEASE_NOTIFY_DISCORD)) }}
         env:
           # GH_TOKEN vem do Infisical (exportado como env) ou cai no secret.
-          GH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token || env.GH_TOKEN || secrets.GH_TOKEN }}
         run: |
           gh workflow run release-notify.yml \
             --repo "${{ inputs.public-repo }}" \

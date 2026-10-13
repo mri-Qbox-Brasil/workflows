@@ -32,7 +32,8 @@ on:
         type: string
         default: 'https://github.com/mri-Qbox-Brasil'
     secrets:
-      # Agora opcional: com o Infisical vem por OIDC. Aceito como fallback.
+      # Fonte primaria: token do App mri-action-runner (passo "Token do App").
+      # PAT segue como fallback (Infisical por OIDC ou secrets: inherit).
       GH_TOKEN:
         required: false
       # Fallback só para ler o pacote privado @mri-qbox-brasil/workflows a partir
@@ -55,6 +56,9 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      # npm usa o GITHUB_TOKEN (pacote agora publico): sem packages: read aqui
+      # — e no wrapper chamador — o install morre em startup_failure.
+      packages: read
       id-token: write
 
     steps:
@@ -83,25 +87,43 @@ jobs:
           env-slug: ${{ inputs.infisical-env }}
           oidc-audience: ${{ inputs.infisical-audience }}
 
-      # Este job so funciona com PAT, e nao ha como contornar: o push toca
-      # `.github/workflows/`, e o GITHUB_TOKEN padrao e um GitHub App — o GitHub
-      # recusa com "refusing to allow a GitHub App to create or update workflow
-      # ... without `workflows` permission", e `workflows` nao existe como escopo
-      # declaravel em `permissions:`. Sem esse preflight a run ia ate o fim e
-      # morria no push, com o erro escondido no meio do log.
+      # Token do App mri-action-runner (FONTE PRIMARIA; o PAT segue como
+      # fallback nas cadeias `app || env.GH_TOKEN || secrets.GH_TOKEN`). Sem
+      # continue-on-error: se a emissao falhar, o job fica VERMELHO em vez de
+      # cair para PAT em silencio — mesmo modelo do enforce-delete-branch.
+      - name: Token do App mri-action-runner
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ env.APP_PRIVATE_KEY }}
+          owner: mri-Qbox-Brasil
+          permission-contents: write
+          permission-pull-requests: write
+          permission-workflows: write
+          permission-members: read
+          permission-administration: write
+          permission-metadata: read
+
+      # Este job escreve em `.github/workflows/`, e o GITHUB_TOKEN padrao nao
+      # pode (o GitHub recusa App sem permissao `workflows`). Por isso o token
+      # efetivo e o do App mri-action-runner (passo "Token do App" acima, com
+      # `workflows: write`) — e a virada que destrava este job sem PAT. Sem o
+      # preflight a run ia ate o fim e morria no push, com o erro escondido no
+      # meio do log.
       - name: Preflight — token capaz de escrever em .github/workflows/
         env:
-          RESOLVED_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+          RESOLVED_TOKEN: ${{ steps.app-token.outputs.token || env.GH_TOKEN || secrets.GH_TOKEN }}
         run: |
           if [ -z "$RESOLVED_TOKEN" ]; then
-            echo "::error::Sem GH_TOKEN (nem pelo Infisical, nem por secret do repo/org). Este job precisa de um PAT com escopo 'workflow' no secret GH_TOKEN — o GITHUB_TOKEN padrao nao pode alterar arquivos de workflow."
+            echo "::error::Sem token (nem do App via Infisical/APP_PRIVATE_KEY, nem GH_TOKEN por secret do repo/org). Este job precisa do token do App mri-action-runner — o GITHUB_TOKEN padrao nao pode alterar arquivos de workflow."
             exit 1
           fi
 
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          token: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+          token: ${{ steps.app-token.outputs.token || env.GH_TOKEN || secrets.GH_TOKEN }}
 
       - uses: actions/setup-node@v7
         with:
@@ -114,7 +136,10 @@ jobs:
         continue-on-error: true
         run: npm install --no-save @mri-qbox-brasil/workflows
         env:
-          NODE_AUTH_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN || secrets.PACKAGES_TOKEN || github.token }}
+          # npm com o GITHUB_TOKEN (pacote agora publico — vale ate de fora da
+          # org); PACKAGES_TOKEN e PAT seguem como fallback (repo com .npmrc
+          # proprio que referencia ${PACKAGES_TOKEN}).
+          NODE_AUTH_TOKEN: ${{ github.token || secrets.PACKAGES_TOKEN || env.GH_TOKEN || secrets.GH_TOKEN }}
           # Repo com `.npmrc` proprio (ex.: mri_botcreator) vence o user-level que
           # o setup-node escreve, e o de la referencia ${PACKAGES_TOKEN}. Sem esta
           # linha o token resolvia vazio e o install caia em 401 mesmo com o PAT
@@ -140,5 +165,5 @@ jobs:
             npx workflows update-actions
           fi
         env:
-          GITHUB_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token || env.GH_TOKEN || secrets.GH_TOKEN }}
           PR_TEAM: ${{ inputs.pr-team }}
