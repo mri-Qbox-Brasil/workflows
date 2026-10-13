@@ -8,12 +8,49 @@ on:
 jobs:
   update-actions:
     runs-on: ubuntu-latest
+    # Bloco minimo: o push (inclusive em `.github/workflows/`) e as chamadas
+    # `gh` usam o token do App (passo abaixo); o GITHUB_TOKEN fica no minimo.
+    # O id-token e o OIDC que o Infisical troca pelos secrets.
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
 
     steps:
+      # Puxa os secrets do Infisical via OIDC (APP_PRIVATE_KEY do projeto
+      # github-releases-k1-qq, mesmo dos callables). Nao-fatal: cai no fallback
+      # secrets.* se o Infisical estiver fora.
+      - name: Secrets via Infisical (OIDC)
+        uses: Infisical/secrets-action@v1.0.16
+        with:
+          method: oidc
+          domain: https://secrets.mriqbox.com.br
+          identity-id: efec2ffe-55d0-479d-9535-8da6b0ea4665
+          project-slug: github-releases-k1-qq
+          env-slug: prod
+          oidc-audience: https://github.com/mri-Qbox-Brasil
+
+      # Token do App mri-action-runner (FONTE PRIMARIA, com `workflows: write`).
+      # Sem continue-on-error: se a emissao falhar, o job fica VERMELHO em vez
+      # de cair para PAT em silencio.
+      - name: Token do App mri-action-runner
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ env.APP_PRIVATE_KEY }}
+          owner: mri-Qbox-Brasil
+          permission-contents: write
+          permission-pull-requests: write
+          permission-workflows: write
+          permission-members: read
+          permission-administration: write
+          permission-metadata: read
+
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          token: ${{ secrets.GH_TOKEN }}
+          token: ${{ steps.app-token.outputs.token || env.GH_TOKEN || secrets.GH_TOKEN }}
 
       - name: Torna o script executavel
         run: chmod +x .release/update-actions.sh
@@ -21,5 +58,5 @@ jobs:
       - name: Run update script
         run: ./.release/update-actions.sh
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token || env.GH_TOKEN || secrets.GH_TOKEN }}
           PR_TEAM: ${{ vars.PR_TEAM }}

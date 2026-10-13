@@ -52,7 +52,8 @@ on:
         type: string
         default: 'https://github.com/mri-Qbox-Brasil'
     secrets:
-      # Agora opcionais: com o Infisical vem por OIDC. Aceitos como fallback.
+      # Fonte primaria: token do App mri-action-runner (passo "Token do App").
+      # PAT da org segue como fallback (Infisical por OIDC ou secrets).
       # PAT da org, usado pelo semantic-release (@semantic-release/git + github).
       GH_TOKEN:
         required: false
@@ -120,11 +121,27 @@ jobs:
           env-slug: ${{ inputs.infisical-env }}
           oidc-audience: ${{ inputs.infisical-audience }}
 
+      # Token do App mri-action-runner (FONTE PRIMARIA; o PAT segue como
+      # fallback nas cadeias `app || env.GH_TOKEN || secrets.GH_TOKEN`). Sem
+      # continue-on-error: se a emissao falhar, o job fica VERMELHO em vez de
+      # cair para PAT em silencio — mesmo modelo do enforce-delete-branch.
+      - name: Token do App mri-action-runner
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ env.APP_PRIVATE_KEY }}
+          owner: mri-Qbox-Brasil
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
+          permission-metadata: read
+
       - name: Checkout Repository
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          token: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+          token: ${{ steps.app-token.outputs.token || env.GH_TOKEN || secrets.GH_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -137,7 +154,7 @@ jobs:
         id: semantic
         uses: cycjimmy/semantic-release-action@v6
         env:
-          GITHUB_TOKEN: ${{ env.GH_TOKEN || secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token || env.GH_TOKEN || secrets.GH_TOKEN }}
         with:
           extra_plugins: |
             @semantic-release/changelog

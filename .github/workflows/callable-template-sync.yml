@@ -39,9 +39,10 @@ on:
         type: string
         default: 'https://github.com/mri-Qbox-Brasil'
     secrets:
-      # PAT com escopo `workflow` (classic) ou fine-grained com
-      # "Workflows: Read and write". O GITHUB_TOKEN padrão NÃO serve: o GitHub
-      # proíbe App tokens de criar/alterar arquivos em .github/workflows/.
+      # Fonte primaria: token do App mri-action-runner (passo "Token do App",
+      # com `workflows: write` — e o que destrava o push em .github/). O
+      # GITHUB_TOKEN padrao segue NAO servindo; PAT com `workflow` segue como
+      # fallback.
       GH_TOKEN:
         required: false
 
@@ -87,12 +88,30 @@ jobs:
           env-slug: ${{ inputs.infisical-env }}
           oidc-audience: ${{ inputs.infisical-audience }}
 
+      # Token do App mri-action-runner (FONTE PRIMARIA, com `workflows: write`:
+      # destrava o push em `.github/workflows/`, que o GITHUB_TOKEN nunca
+      # consegue). Sem continue-on-error: se a emissao falhar, o job fica
+      # VERMELHO em vez de cair para PAT em silencio. O PAT segue como fallback
+      # na cadeia abaixo.
+      - name: Token do App mri-action-runner
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ env.APP_PRIVATE_KEY }}
+          owner: mri-Qbox-Brasil
+          permission-contents: write
+          permission-pull-requests: write
+          permission-workflows: write
+          permission-metadata: read
+
       - name: Token do sync
         id: token
         env:
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
           FALLBACK_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
         run: |
-          token="${GH_TOKEN:-$FALLBACK_TOKEN}"
+          token="${APP_TOKEN:-${GH_TOKEN:-$FALLBACK_TOKEN}}"
           echo "::add-mask::$token"
           echo "value=$token" >> "$GITHUB_OUTPUT"
 
