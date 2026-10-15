@@ -37,7 +37,8 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@v3
         with:
-          client-id: ${{ vars.APP_CLIENT_ID }}
+          # public client ID: org variables don't reach private repos on the free plan
+          client-id: Iv23liV92Fq3ELbFjA4g
           private-key: ${{ env.APP_PRIVATE_KEY }}
           owner: mri-Qbox-Brasil
           permission-contents: write
