@@ -210,7 +210,7 @@ em todo repo não arquivado da org, sem tocar em nenhuma outra configuração
 
 A escrita usa o App **mri-action-runner** com permissão de **Administration
 write** (token gerado no workflow via Infisical OIDC +
-`actions/create-github-app-token`, com `vars.APP_CLIENT_ID` e
+`actions/create-github-app-token`, com o client ID escrito no workflow e
 `APP_PRIVATE_KEY`; nada de PAT). Para conferir sem
 mudar nada: Actions → Enforce delete branch on merge → Run workflow → `dry_run:
 true`.

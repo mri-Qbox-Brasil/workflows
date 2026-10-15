@@ -9,8 +9,8 @@ name: Enforce delete branch on merge
 # Infisical (OIDC) + actions/create-github-app-token. Nada de PAT: nenhum
 # secrets.GH_TOKEN neste workflow. A chave privada do App vem do Infisical
 # (projeto mri-actions-runner-lhv-f, env prod, segredo APP_PRIVATE_KEY
-# exportado como env) e o App ID vem de vars.APP_CLIENT_ID (variable do
-# repo workflows, nao secret). Permissoes minimas do token: administration
+# exportado como env) e o client ID do App fica escrito no workflow (publico,
+# nao secret). Permissoes minimas do token: administration
 # write + metadata read. Sem continue-on-error nos dois passos: se o
 # Infisical ou o token falharem, o job fica VERMELHO (falha visivel, sem
 # cair para PAT em silencio). O GITHUB_TOKEN do job fica no minimo
@@ -54,7 +54,8 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@v3
         with:
-          client-id: ${{ vars.APP_CLIENT_ID }}
+          # public client ID: org variables don't reach private repos on the free plan
+          client-id: Iv23liV92Fq3ELbFjA4g
           private-key: ${{ env.APP_PRIVATE_KEY }}
           owner: mri-Qbox-Brasil
           permission-administration: write
