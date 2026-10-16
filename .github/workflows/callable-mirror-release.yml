@@ -93,7 +93,7 @@ jobs:
     # Chave do job: `vars.CI_RELEASE=false` desliga a release neste repositorio.
     # Ver a secao "Chaves liga-desliga" no README.
     if: ${{ !contains(fromJSON('["false","0","off","no"]'), format('{0}', vars.CI_RELEASE)) }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     # ATENCAO — o JOB CHAMADOR (wrapper release.yml do source) precisa declarar
     # ESTE MESMO bloco, inteiro. Nao basta copiar a linha do id-token.
     #
