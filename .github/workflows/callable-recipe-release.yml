@@ -77,7 +77,7 @@ jobs:
     # Chave do job: `vars.CI_RELEASE=false` desliga a release neste repositorio.
     # Ver a secao "Chaves liga-desliga" no README.
     if: ${{ !contains(fromJSON('["false","0","off","no"]'), format('{0}', vars.CI_RELEASE)) }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     # ATENCAO — o wrapper chamador precisa declarar ESTE MESMO bloco, inteiro.
     # Declarar `permissions:` num job SUBSTITUI as permissoes padrao, nao soma:
     # todo escopo omitido vira `none`, e um reusable workflow que peca mais do que
@@ -166,6 +166,29 @@ jobs:
       # Uma tarefa por passo: se um upload falhar, o passo vermelho ja diz qual.
       # As credenciais e o destino sao resolvidos uma vez e exportados no
       # $GITHUB_ENV, para que cada upload seja um comando `aws` unico.
+
+      - name: Garante aws e jq no runner
+        if: ${{ steps.semantic.outputs.new_release_published == 'true' && !contains(fromJSON('["false","0","off","no"]'), format('{0}', vars.CI_RECIPE_UPLOAD)) }}
+        run: |
+          set -euo pipefail
+          # Self-hosted runner has no sudo here: install into the tool cache once, reused across runs.
+          BIN="$RUNNER_TOOL_CACHE/mri-bin"
+          mkdir -p "$BIN"
+          echo "$BIN" >> "$GITHUB_PATH"
+          export PATH="$BIN:$PATH"
+          if ! command -v jq >/dev/null; then
+            curl -fsSL -o "$BIN/jq" https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
+            chmod +x "$BIN/jq"
+          fi
+          if ! command -v aws >/dev/null; then
+            TMP=$(mktemp -d)
+            curl -fsSL -o "$TMP/awscli.zip" https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
+            unzip -q "$TMP/awscli.zip" -d "$TMP"
+            "$TMP/aws/install" -i "$RUNNER_TOOL_CACHE/aws-cli" -b "$BIN" --update
+            rm -rf "$TMP"
+          fi
+          jq --version
+          aws --version
 
       - name: Configura credenciais AWS/R2
         if: ${{ steps.semantic.outputs.new_release_published == 'true' && !contains(fromJSON('["false","0","off","no"]'), format('{0}', vars.CI_RECIPE_UPLOAD)) }}
