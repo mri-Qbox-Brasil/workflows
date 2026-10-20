@@ -59,7 +59,7 @@ jobs:
     # Chave do job: `vars.CI_DOCS_NOTIFY=false` para de avisar a documentacao.
     # Ver a secao "Chaves liga-desliga" no README.
     if: ${{ !contains(fromJSON('["false","0","off","no"]'), format('{0}', vars.CI_DOCS_NOTIFY)) }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     # O wrapper chamador precisa declarar ESTE MESMO bloco. Aqui ele e so o
     # id-token, entao um wrapper que declare apenas isso funciona — mas a regra
     # geral vale: declarar `permissions:` num job SUBSTITUI as permissoes padrao,
