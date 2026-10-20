@@ -1,0 +1,333 @@
+name: Installer Build (callable)
+
+# Builds a release of the private mri_installer_rust from a public caller repo, where hosted runners are free.
+# The version (commit, tag and source release) is created beforehand by semantic-release; this only builds and publishes.
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: 'Source tag to build, e.g. v2.33.3'
+        type: string
+        required: true
+      publish:
+        description: 'false only builds and checks the binaries'
+        type: boolean
+        default: true
+      source-repo:
+        type: string
+        default: 'mri-Qbox-Brasil/mri_installer_rust'
+      infisical-domain:
+        type: string
+        default: 'https://secrets.mriqbox.com.br'
+      infisical-identity:
+        type: string
+        default: 'efec2ffe-55d0-479d-9535-8da6b0ea4665'
+      infisical-project:
+        type: string
+        default: 'github-releases-k1-qq'
+      infisical-env:
+        type: string
+        default: 'prod'
+      infisical-audience:
+        type: string
+        default: 'https://github.com/mri-Qbox-Brasil'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  windows:
+    name: Build (Windows, GUI)
+    runs-on: windows-latest
+    steps:
+      - name: Secrets via Infisical (OIDC)
+        uses: Infisical/secrets-action@v1.0.16
+        with:
+          method: oidc
+          domain: ${{ inputs.infisical-domain }}
+          identity-id: ${{ inputs.infisical-identity }}
+          project-slug: ${{ inputs.infisical-project }}
+          env-slug: ${{ inputs.infisical-env }}
+          oidc-audience: ${{ inputs.infisical-audience }}
+
+      - name: App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: Iv23liV92Fq3ELbFjA4g
+          private-key: ${{ env.APP_PRIVATE_KEY }}
+          owner: mri-Qbox-Brasil
+          repositories: mri_installer_rust
+          permission-contents: read
+
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.source-repo }}
+          ref: ${{ inputs.tag }}
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: gui
+
+      - run: npm ci
+
+      - name: Version matches the tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          V=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          [ "v$V" = "${{ inputs.tag }}" ] || { echo "::error::tauri.conf.json has $V, tag is ${{ inputs.tag }}"; exit 1; }
+
+      - name: Tests
+        working-directory: src-tauri
+        run: cargo test --release --lib
+
+      - name: Build (GUI app)
+        run: npm run tauri build
+
+      # A packaging mix-up once shipped the CLI under the GUI name, so check size and WebView2.
+      - name: Check the GUI binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXE="src-tauri/target/release/mri_installer.exe"
+          TAM=$(stat -c%s "$EXE")
+          [ "$TAM" -ge 20000000 ] || { echo "::error::$EXE has $TAM bytes, too small for the GUI app"; exit 1; }
+          grep -qa "WebView2" "$EXE" || { echo "::error::$EXE does not mention WebView2"; exit 1; }
+          mkdir -p entrega && cp "$EXE" entrega/ && ls -l entrega
+
+      - uses: actions/cache/save@v4
+        with:
+          key: installer-windows-${{ github.run_id }}
+          path: entrega/
+          enableCrossOsArchive: true
+
+  windows_cli:
+    name: Build (Windows, CLI)
+    runs-on: windows-latest
+    steps:
+      - name: Secrets via Infisical (OIDC)
+        uses: Infisical/secrets-action@v1.0.16
+        with:
+          method: oidc
+          domain: ${{ inputs.infisical-domain }}
+          identity-id: ${{ inputs.infisical-identity }}
+          project-slug: ${{ inputs.infisical-project }}
+          env-slug: ${{ inputs.infisical-env }}
+          oidc-audience: ${{ inputs.infisical-audience }}
+
+      - name: App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: Iv23liV92Fq3ELbFjA4g
+          private-key: ${{ env.APP_PRIVATE_KEY }}
+          owner: mri-Qbox-Brasil
+          repositories: mri_installer_rust
+          permission-contents: read
+
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.source-repo }}
+          ref: ${{ inputs.tag }}
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: cli-windows
+
+      - name: Build (CLI)
+        working-directory: src-tauri
+        run: cargo build --release --no-default-features --features headless --bin mri_installer_headless
+
+      - name: Collect
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p entrega
+          cp src-tauri/target/release/mri_installer_headless.exe entrega/
+          ls -l entrega
+
+      - uses: actions/cache/save@v4
+        with:
+          key: installer-windows-cli-${{ github.run_id }}
+          path: entrega/
+          enableCrossOsArchive: true
+
+  linux:
+    name: Build (Linux)
+    runs-on: ubuntu-latest
+    env:
+      # rust-toolchain.toml pins the MSVC toolchain, which doesn't exist here.
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+      - name: Secrets via Infisical (OIDC)
+        uses: Infisical/secrets-action@v1.0.16
+        with:
+          method: oidc
+          domain: ${{ inputs.infisical-domain }}
+          identity-id: ${{ inputs.infisical-identity }}
+          project-slug: ${{ inputs.infisical-project }}
+          env-slug: ${{ inputs.infisical-env }}
+          oidc-audience: ${{ inputs.infisical-audience }}
+
+      - name: App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: Iv23liV92Fq3ELbFjA4g
+          private-key: ${{ env.APP_PRIVATE_KEY }}
+          owner: mri-Qbox-Brasil
+          repositories: mri_installer_rust
+          permission-contents: read
+
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.source-repo }}
+          ref: ${{ inputs.tag }}
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: cli-linux
+
+      - name: Tests
+        working-directory: src-tauri
+        run: cargo test --release --lib --no-default-features --features headless
+
+      - name: Build (CLI)
+        working-directory: src-tauri
+        run: cargo build --release --no-default-features --features headless --bin mri_installer_headless
+
+      - name: Check it has no GUI dependency
+        run: |
+          set -euo pipefail
+          BIN=src-tauri/target/release/mri_installer_headless
+          if ldd "$BIN" | grep -qi 'webkit\|gtk\|javascriptcore'; then
+            echo "::error::$BIN links a GUI library and won't run on a server"
+            exit 1
+          fi
+          mkdir -p entrega
+          cp "$BIN" entrega/mri_installer_linux
+          chmod +x entrega/mri_installer_linux
+          ls -l entrega
+
+      - uses: actions/cache/save@v4
+        with:
+          key: installer-linux-${{ github.run_id }}
+          path: entrega/
+          enableCrossOsArchive: true
+
+  publish:
+    name: Publish
+    needs: [windows, windows_cli, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/cache/restore@v4
+        with:
+          key: installer-windows-${{ github.run_id }}
+          path: entrega/
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+
+      - uses: actions/cache/restore@v4
+        with:
+          key: installer-windows-cli-${{ github.run_id }}
+          path: entrega/
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+
+      - uses: actions/cache/restore@v4
+        with:
+          key: installer-linux-${{ github.run_id }}
+          path: entrega/
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+
+      - name: Binaries
+        run: |
+          set -euo pipefail
+          for f in mri_installer.exe mri_installer_headless.exe mri_installer_linux; do
+            [ -s "entrega/$f" ] || { echo "::error::missing entrega/$f"; exit 1; }
+          done
+          ls -l entrega
+          sha256sum entrega/* | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Secrets via Infisical (OIDC)
+        if: inputs.publish
+        uses: Infisical/secrets-action@v1.0.16
+        with:
+          method: oidc
+          domain: ${{ inputs.infisical-domain }}
+          identity-id: ${{ inputs.infisical-identity }}
+          project-slug: ${{ inputs.infisical-project }}
+          env-slug: ${{ inputs.infisical-env }}
+          oidc-audience: ${{ inputs.infisical-audience }}
+
+      - name: App token
+        id: app-token
+        if: inputs.publish
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: Iv23liV92Fq3ELbFjA4g
+          private-key: ${{ env.APP_PRIVATE_KEY }}
+          owner: mri-Qbox-Brasil
+          repositories: mri_installer_rust,${{ github.event.repository.name }}
+          permission-contents: write
+
+      - name: Release in the download repo
+        if: inputs.publish
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          TAG: ${{ inputs.tag }}
+          SOURCE: ${{ inputs.source-repo }}
+          TARGET: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh release view "$TAG" -R "$SOURCE" --json body -q .body > notes.md
+          gh release create "$TAG" -R "$TARGET" --title "$TAG" --notes-file notes.md entrega/*
+          gh release upload "$TAG" -R "$SOURCE" entrega/* --clobber
+
+      - name: Sync README
+        if: inputs.publish
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          TAG: ${{ inputs.tag }}
+          SOURCE: ${{ inputs.source-repo }}
+          TARGET: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git clone -q "https://x-access-token:${GH_TOKEN}@github.com/${TARGET}.git" public_repo
+          for l in "" .en .es; do
+            gh api "repos/${SOURCE}/contents/README_PUBLIC${l}.md?ref=${TAG}" -H "Accept: application/vnd.github.raw" > "public_repo/README${l}.md"
+          done
+          cd public_repo
+          if git diff --quiet; then echo "README unchanged"; exit 0; fi
+          git add README.md README.en.md README.es.md
+          git commit -m "docs: update README from source ${TAG} [skip ci]"
+          git push origin HEAD
