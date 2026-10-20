@@ -1,14 +1,15 @@
 name: Installer Build (callable)
 
-# Builds a release of the private mri_installer_rust from a public caller repo, where hosted runners are free.
-# The version (commit, tag and source release) is created beforehand by semantic-release; this only builds and publishes.
+# Releases the private mri_installer_rust from a public caller repo, where hosted runners are free.
+# Without a tag: semantic-release decides the version, builds run first and the version is only cut once they pass.
+# With a tag: rebuilds and publishes a version that already exists in the source repo.
 on:
   workflow_call:
     inputs:
       tag:
-        description: 'Source tag to build, e.g. v2.33.3'
+        description: 'Existing source tag to publish, e.g. v2.33.3 (empty releases what is new on main)'
         type: string
-        required: true
+        default: ''
       publish:
         description: 'false only builds and checks the binaries'
         type: boolean
@@ -37,8 +38,84 @@ permissions:
   id-token: write
 
 jobs:
+  version:
+    name: Version
+    runs-on: ubuntu-latest
+    outputs:
+      VERSION: ${{ steps.meta.outputs.VERSION }}
+      PUBLISHED: ${{ steps.meta.outputs.PUBLISHED }}
+      SHA: ${{ steps.meta.outputs.SHA }}
+      CUT: ${{ steps.meta.outputs.CUT }}
+    steps:
+      - name: Secrets via Infisical (OIDC)
+        uses: Infisical/secrets-action@v1.0.16
+        with:
+          method: oidc
+          domain: ${{ inputs.infisical-domain }}
+          identity-id: ${{ inputs.infisical-identity }}
+          project-slug: ${{ inputs.infisical-project }}
+          env-slug: ${{ inputs.infisical-env }}
+          oidc-audience: ${{ inputs.infisical-audience }}
+
+      # Write access because the semantic-release dry run checks it can push.
+      - name: App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: Iv23liV92Fq3ELbFjA4g
+          private-key: ${{ env.APP_PRIVATE_KEY }}
+          owner: mri-Qbox-Brasil
+          repositories: mri_installer_rust
+          permission-contents: write
+          permission-issues: write
+          permission-pull-requests: write
+
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.source-repo }}
+          ref: ${{ inputs.tag || 'main' }}
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - uses: actions/setup-node@v7
+        if: inputs.tag == ''
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+        if: inputs.tag == ''
+
+      - name: Next version
+        id: meta
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          echo "SHA=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          if [ -n "$TAG" ]; then
+            echo "VERSION=${TAG#v}" >> "$GITHUB_OUTPUT"
+            echo "PUBLISHED=true" >> "$GITHUB_OUTPUT"
+            echo "CUT=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          npx semantic-release --dry-run 2>&1 | tee sr-dry.log
+          VERSION=$(grep -oiE 'the next release version is [0-9]+\.[0-9]+\.[0-9]+' sr-dry.log | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | tail -n1 || true)
+          if [ -n "$VERSION" ]; then
+            echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+            echo "PUBLISHED=true" >> "$GITHUB_OUTPUT"
+            echo "CUT=true" >> "$GITHUB_OUTPUT"
+            echo "next version: $VERSION" | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "PUBLISHED=false" >> "$GITHUB_OUTPUT"
+            echo "nothing to release" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
   windows:
     name: Build (Windows, GUI)
+    needs: version
+    if: needs.version.outputs.PUBLISHED == 'true'
     runs-on: windows-latest
     steps:
       - name: Secrets via Infisical (OIDC)
@@ -64,7 +141,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: ${{ inputs.source-repo }}
-          ref: ${{ inputs.tag }}
+          ref: ${{ needs.version.outputs.SHA }}
           token: ${{ steps.app-token.outputs.token }}
           persist-credentials: false
 
@@ -84,12 +161,8 @@ jobs:
 
       - run: npm ci
 
-      - name: Version matches the tag
-        shell: bash
-        run: |
-          set -euo pipefail
-          V=$(node -p "require('./src-tauri/tauri.conf.json').version")
-          [ "v$V" = "${{ inputs.tag }}" ] || { echo "::error::tauri.conf.json has $V, tag is ${{ inputs.tag }}"; exit 1; }
+      - name: Apply version
+        run: node scripts/aplicar-versao.cjs "${{ needs.version.outputs.VERSION }}"
 
       - name: Tests
         working-directory: src-tauri
@@ -111,12 +184,14 @@ jobs:
 
       - uses: actions/cache/save@v4
         with:
-          key: installer-windows-${{ github.run_id }}
+          key: installer-windows-${{ github.run_id }}-${{ github.run_attempt }}
           path: entrega/
           enableCrossOsArchive: true
 
   windows_cli:
     name: Build (Windows, CLI)
+    needs: version
+    if: needs.version.outputs.PUBLISHED == 'true'
     runs-on: windows-latest
     steps:
       - name: Secrets via Infisical (OIDC)
@@ -142,7 +217,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: ${{ inputs.source-repo }}
-          ref: ${{ inputs.tag }}
+          ref: ${{ needs.version.outputs.SHA }}
           token: ${{ steps.app-token.outputs.token }}
           persist-credentials: false
 
@@ -154,6 +229,9 @@ jobs:
         with:
           workspaces: src-tauri
           key: cli-windows
+
+      - name: Apply version
+        run: node scripts/aplicar-versao.cjs "${{ needs.version.outputs.VERSION }}"
 
       - name: Build (CLI)
         working-directory: src-tauri
@@ -169,12 +247,14 @@ jobs:
 
       - uses: actions/cache/save@v4
         with:
-          key: installer-windows-cli-${{ github.run_id }}
+          key: installer-windows-cli-${{ github.run_id }}-${{ github.run_attempt }}
           path: entrega/
           enableCrossOsArchive: true
 
   linux:
     name: Build (Linux)
+    needs: version
+    if: needs.version.outputs.PUBLISHED == 'true'
     runs-on: ubuntu-latest
     env:
       # rust-toolchain.toml pins the MSVC toolchain, which doesn't exist here.
@@ -203,7 +283,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: ${{ inputs.source-repo }}
-          ref: ${{ inputs.tag }}
+          ref: ${{ needs.version.outputs.SHA }}
           token: ${{ steps.app-token.outputs.token }}
           persist-credentials: false
 
@@ -213,6 +293,9 @@ jobs:
         with:
           workspaces: src-tauri
           key: cli-linux
+
+      - name: Apply version
+        run: node scripts/aplicar-versao.cjs "${{ needs.version.outputs.VERSION }}"
 
       - name: Tests
         working-directory: src-tauri
@@ -237,32 +320,33 @@ jobs:
 
       - uses: actions/cache/save@v4
         with:
-          key: installer-linux-${{ github.run_id }}
+          key: installer-linux-${{ github.run_id }}-${{ github.run_attempt }}
           path: entrega/
           enableCrossOsArchive: true
 
   publish:
     name: Publish
-    needs: [windows, windows_cli, linux]
+    needs: [version, windows, windows_cli, linux]
+    if: needs.version.outputs.PUBLISHED == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/cache/restore@v4
         with:
-          key: installer-windows-${{ github.run_id }}
+          key: installer-windows-${{ github.run_id }}-${{ github.run_attempt }}
           path: entrega/
           enableCrossOsArchive: true
           fail-on-cache-miss: true
 
       - uses: actions/cache/restore@v4
         with:
-          key: installer-windows-cli-${{ github.run_id }}
+          key: installer-windows-cli-${{ github.run_id }}-${{ github.run_attempt }}
           path: entrega/
           enableCrossOsArchive: true
           fail-on-cache-miss: true
 
       - uses: actions/cache/restore@v4
         with:
-          key: installer-linux-${{ github.run_id }}
+          key: installer-linux-${{ github.run_id }}-${{ github.run_attempt }}
           path: entrega/
           enableCrossOsArchive: true
           fail-on-cache-miss: true
@@ -297,25 +381,59 @@ jobs:
           owner: mri-Qbox-Brasil
           repositories: mri_installer_rust,${{ github.event.repository.name }}
           permission-contents: write
+          permission-issues: write
+          permission-pull-requests: write
+
+      # Must sit on the tip of main to push the version commit; if main moved since the builds, it refuses.
+      - uses: actions/checkout@v7
+        if: inputs.publish && needs.version.outputs.CUT == 'true'
+        with:
+          repository: ${{ inputs.source-repo }}
+          ref: main
+          fetch-depth: 0
+          path: source
+          token: ${{ steps.app-token.outputs.token }}
+
+      - uses: actions/setup-node@v7
+        if: inputs.publish && needs.version.outputs.CUT == 'true'
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+
+      - name: Semantic Release
+        if: inputs.publish && needs.version.outputs.CUT == 'true'
+        working-directory: source
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          VERSION: ${{ needs.version.outputs.VERSION }}
+        run: |
+          set -euo pipefail
+          [ "$(git rev-parse HEAD)" = "${{ needs.version.outputs.SHA }}" ] || { echo "::error::main moved since the builds, nothing released; run again"; exit 1; }
+          npm ci
+          npx semantic-release
+          git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" > /dev/null || { echo "::error::semantic-release did not create v$VERSION"; exit 1; }
 
       - name: Release in the download repo
         if: inputs.publish
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          TAG: ${{ inputs.tag }}
+          TAG: v${{ needs.version.outputs.VERSION }}
           SOURCE: ${{ inputs.source-repo }}
           TARGET: ${{ github.repository }}
         run: |
           set -euo pipefail
           gh release view "$TAG" -R "$SOURCE" --json body -q .body > notes.md
-          gh release create "$TAG" -R "$TARGET" --title "$TAG" --notes-file notes.md entrega/*
+          gh release create "$TAG" -R "$TARGET" --title "$TAG" --notes-file notes.md --latest entrega/*
           gh release upload "$TAG" -R "$SOURCE" entrega/* --clobber
 
+      # After the release on purpose: a failed README push must not undo a published version.
       - name: Sync README
         if: inputs.publish
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          TAG: ${{ inputs.tag }}
+          TAG: v${{ needs.version.outputs.VERSION }}
           SOURCE: ${{ inputs.source-repo }}
           TARGET: ${{ github.repository }}
         run: |
