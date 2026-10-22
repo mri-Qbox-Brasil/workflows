@@ -71,7 +71,10 @@ jobs:
     # format forca string dos dois lados, e ai a comparacao e textual. Foi assim
     # que a frota inteira ficou sem release entre 23/07 e 30/07 de 2026.
     if: ${{ !contains(fromJSON('["false","0","off","no"]'), format('{0}', vars.CI_RELEASE)) }}
-    runs-on: ubuntu-latest
+    # Runner por variavel do repo chamador: `vars.CI_RUNNER=self-hosted` para repo
+    # privado (hospedado barrado por cobranca no plano free da org). Vazio =>
+    # ubuntu-latest, como antes (repos publicos rodam de graca no hospedado).
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     # ATENCAO — o JOB CHAMADOR (wrapper release.yml do resource) precisa declarar
     # ESTE MESMO bloco, inteiro. Nao basta copiar a linha do id-token.
     #
@@ -245,6 +248,9 @@ jobs:
           NODE_AUTH_TOKEN: ${{ github.token }}
           # Diretorio do front, consumido pelo set-version, build e git assets.
           WEB_PATH: ${{ inputs.web-path }}
+          # Runner self-hosted tem 1 GB: sem isso o Node limita o heap perto de
+          # 500 MB e o vite morre (mesmo ajuste do callable-mirror-release).
+          NODE_OPTIONS: --max-old-space-size=2048
           # Nome do resource, consumido pelo build (pasta e zip em dist/).
           RESOURCE_NAME: ${{ steps.rn.outputs.name }}
           # Token para o GitHub Models (acesso é por identidade da conta, não por

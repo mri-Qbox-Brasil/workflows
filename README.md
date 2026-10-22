@@ -121,6 +121,12 @@ valer em todos os espelhos por padrão. Ligado o porte, o `CI_PORT_PR` e o
 `CI_PORT_PR_CLOSE_PUBLIC` (definidos no **público**, que é quem chama o
 `port-pr`) seguem a regra normal de desligar.
 
+Uma variável não é liga-desliga, é valor: **`CI_RUNNER`** escolhe o runner do
+`callable-release` (vazia => `ubuntu-latest`). Repo **privado** usa
+`CI_RUNNER=self-hosted`: no plano free da org o runner hospedado é barrado por
+cobrança em repo privado. Os callables `mirror-release`, `recipe-release` e
+`repo-dispatch` já rodam sempre no self-hosted.
+
 Para desligar algo em um repo, sem sair do terminal:
 
 ```bash
