@@ -249,10 +249,6 @@
     "slug": "mri_Qspawn"
   },
   {
-    "repo": "mri_Qspotlights",
-    "name": "MRI Qspotlights"
-  },
-  {
     "repo": "mri_Qstashes",
     "name": "MRI Qstashes"
   },
