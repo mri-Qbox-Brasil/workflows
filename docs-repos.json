@@ -132,8 +132,9 @@
     "name": "MM Radio"
   },
   {
-    "repo": "mri_Qadmin",
-    "name": "MRI Qadmin"
+    "repo": "mri_Qadmin-source",
+    "name": "MRI Qadmin",
+    "slug": "mri_Qadmin"
   },
   {
     "repo": "mri_Qbackpack",
@@ -164,8 +165,9 @@
     "name": "MRI Qcarwash"
   },
   {
-    "repo": "mri_Qchat",
-    "name": "MRI Qchat"
+    "repo": "mri_Qchat-source",
+    "name": "MRI Qchat",
+    "slug": "mri_Qchat"
   },
   {
     "repo": "mri_Qcrafting",

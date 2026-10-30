@@ -17,7 +17,8 @@ on:
       doc-file:
         type: string
         default: 'MANUAL.md'
-      # Slug sob o qual a página é publicada. Vazio => nome do repositório.
+      # Slug sob o qual a página é publicada. Vazio => nome do repositório sem o
+      # sufixo -source.
       #
       # Existe por causa dos repos de fonte privada (<repo>-source): o MANUAL.md
       # mora no -source, mas a página deve ser publicada com o nome do repo
@@ -128,8 +129,9 @@ jobs:
           RAW_SLUG: ${{ inputs.publish-as }}
           REPO: ${{ github.event.repository.name }}
         run: |
-          echo "name=${RAW_NAME:-$REPO}" >> "$GITHUB_OUTPUT"
-          echo "slug=${RAW_SLUG:-$REPO}" >> "$GITHUB_OUTPUT"
+          PUBLIC="${REPO%-source}"
+          echo "name=${RAW_NAME:-$PUBLIC}" >> "$GITHUB_OUTPUT"
+          echo "slug=${RAW_SLUG:-$PUBLIC}" >> "$GITHUB_OUTPUT"
 
       - name: Disparar atualização na documentação
         uses: peter-evans/repository-dispatch@v4

@@ -38,6 +38,8 @@ const EXCLUDE = {
 // Repos de fonte privada: o MANUAL.md mora no -source, mas a página deve ser
 // publicada com o nome do repo público.
 const SOURCE_OF = {
+    mri_Qadmin: 'mri_Qadmin-source',
+    mri_Qchat: 'mri_Qchat-source',
     mri_Qspawn: 'mri_Qspawn-source',
 }
 
