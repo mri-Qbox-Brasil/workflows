@@ -153,7 +153,7 @@ jobs:
       # garantindo os plugins necessários no runner.
       - name: Run Semantic Release
         id: semantic
-        uses: cycjimmy/semantic-release-action@v6
+        uses: cycjimmy/semantic-release-action@v8
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token || env.GH_TOKEN || secrets.GH_TOKEN }}
         with:
