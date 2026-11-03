@@ -346,7 +346,9 @@
   },
   {
     "repo": "ps-buffs",
-    "name": "PS Buffs"
+    "name": "PS Buffs",
+    "publish": false,
+    "reason": "repositório arquivado (read-only)"
   },
   {
     "repo": "ps-dispatch",
