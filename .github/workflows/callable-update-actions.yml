@@ -91,8 +91,13 @@ jobs:
       # fallback nas cadeias `app || env.GH_TOKEN || secrets.GH_TOKEN`). Sem
       # continue-on-error: se a emissao falhar, o job fica VERMELHO em vez de
       # cair para PAT em silencio — mesmo modelo do enforce-delete-branch.
+      #
+      # So nesta org: o App nao esta instalado em outras (ex.: MRI-Bot), e um token
+      # desta org nao enxerga o repo de la (checkout com "repository not found").
+      # Com o passo pulado, a cadeia acima usa o PAT.
       - name: Token do App mri-action-runner
         id: app-token
+        if: ${{ github.repository_owner == 'mri-Qbox-Brasil' }}
         uses: actions/create-github-app-token@v3
         with:
           # public client ID: org variables don't reach private repos on the free plan

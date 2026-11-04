@@ -109,7 +109,9 @@ wrapper precisa passar `infisical-audience: 'https://github.com/<a-org-dele>'`.
 Do lado do Infisical, `boundAudiences` e o valor de cada `boundClaims` são listas
 OR (`.split(", ").some(...)`), então basta acrescentar a audience e o
 `repository_owner` da outra org à identity existente — **vírgula e espaço**, que
-é o separador exato. Não precisa de identity nova nem de afrouxar o claim.
+é o separador exato. Não precisa de identity nova nem de afrouxar o claim. O
+token do App só é emitido para repos de `mri-Qbox-Brasil`, única org onde ele está
+instalado: de fora, o job usa o PAT (`GH_TOKEN`).
 
 Só mexe em pins de major (`@v4`, `@6`). Referências a *reusable workflows*
 (`owner/repo/.github/workflows/x.yml@ref`), SHAs e branches ficam intocadas — e
