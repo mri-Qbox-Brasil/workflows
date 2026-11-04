@@ -436,13 +436,30 @@ jobs:
       # GITHUB_TOKEN ou token de App — caso em que depender do evento apagaria a
       # notificacao em silencio.
       #
+      # Only what reached the installer is announced; see "Filtro do aviso" in the README.
+      #
       # Chave: `vars.CI_RELEASE_NOTIFY_DISCORD=false` nao dispara a notificacao.
       - name: Dispara notificacao no publico
         if: ${{ steps.meta.outputs.PUBLISHED == 'true' && !contains(fromJSON('["false","0","off","no"]'), format('{0}', vars.CI_RELEASE_NOTIFY_DISCORD)) }}
         env:
           # GH_TOKEN vem do Infisical (exportado como env) ou cai no secret.
           GH_TOKEN: ${{ steps.app-token.outputs.token || env.GH_TOKEN || secrets.GH_TOKEN }}
+          PUBLIC_REPO: ${{ inputs.public-repo }}
         run: |
+          answer="$(curl -fsS --retry 3 --retry-delay 5 --max-time 20 --get \
+            --data-urlencode "repo=${PUBLIC_REPO}" \
+            https://api.mriqbox.com.br/public/release-announce || true)"
+          case "$answer" in
+            *'"announce":true'*) ;;
+            *'"announce":false'*)
+              echo "${PUBLIC_REPO} fora do catalogo e das receitas: sem aviso no Discord."
+              exit 0
+              ;;
+            *)
+              echo "::warning::nao consegui checar o catalogo; sem aviso no Discord."
+              exit 0
+              ;;
+          esac
           gh workflow run release-notify.yml \
-            --repo "${{ inputs.public-repo }}" \
+            --repo "$PUBLIC_REPO" \
             -f version="v${{ steps.meta.outputs.VERSION }}" || echo "dispatch da notificacao falhou (nao fatal)"

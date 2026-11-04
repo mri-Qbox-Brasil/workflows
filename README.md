@@ -135,6 +135,15 @@ gh variable list --repo mri-Qbox-Brasil/mri_Qadmin      # conferir
 gh variable delete CI_LINT_LUA --repo mri-Qbox-Brasil/mri_Qadmin  # religar
 ```
 
+### Filtro do aviso no `mirror-release`
+
+Além da chave, o `mirror-release` consulta `GET https://api.mriqbox.com.br/public/release-announce?repo=<espelho>`
+e só avisa no Discord o que chegou ao instalador: ficha de apoiador no catálogo ou repo instalado por uma
+receita. Se a API não responder, também não avisa: perder um aviso é melhor que anunciar script que não saiu.
+
+A release sai igual nos dois casos. Para anunciar depois, ao entrar no catálogo, rode à mão, sem passar pelo filtro:
+`gh workflow run release-notify.yml --repo <espelho> -f version=v<versão>`. O `callable-release` (repo único) não tem esse filtro.
+
 ## Resumo por IA na notificação de release
 
 O notificador do Discord reescreve o changelog técnico como um resumo curto em
