@@ -113,6 +113,11 @@ OR (`.split(", ").some(...)`), então basta acrescentar a audience e o
 token do App só é emitido para repos de `mri-Qbox-Brasil`, única org onde ele está
 instalado: de fora, o job usa o PAT (`GH_TOKEN`).
 
+**Checks na PR:** por padrão, o commit e o título levam `[skip ci]`, e nenhum
+workflow roda na PR nem no merge. Com `skip-ci: false` no wrapper, os checks do repo
+testam a versão nova de Node antes da aprovação, e o merge dispara os workflows de
+push.
+
 Só mexe em pins de major (`@v4`, `@6`). Referências a *reusable workflows*
 (`owner/repo/.github/workflows/x.yml@ref`), SHAs e branches ficam intocadas — e
 antes de reescrever, confere que a tag flutuante de major realmente existe no

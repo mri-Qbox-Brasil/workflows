@@ -9,6 +9,12 @@ on:
       pr-team:
         type: string
         default: ''
+      # false tira o [skip ci] do commit e do titulo da PR: os checks do repo rodam
+      # na PR e o merge dispara os workflows de push. Exige PAT ou App: o
+      # GITHUB_TOKEN padrao nao dispara workflow.
+      skip-ci:
+        type: boolean
+        default: true
       # Ref usada no fallback por raw (ver o passo do curl mais abaixo).
       script-ref:
         type: string
@@ -173,3 +179,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token || env.GH_TOKEN || secrets.GH_TOKEN }}
           PR_TEAM: ${{ inputs.pr-team }}
+          SKIP_CI: ${{ inputs.skip-ci }}
