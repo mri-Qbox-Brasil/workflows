@@ -150,9 +150,16 @@ BASE_BRANCH=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name)
 
 # `-B` em vez de `-b`: a branch é mensal e pode ter sobrado de uma execução
 # anterior. Com `set -e`, um `checkout -b` em branch existente abortaria tudo.
+# Sem a marca (SKIP_CI=false), a PR roda os checks do repo e o merge dispara os
+# workflows de push. Assim uma versao nova de Node e testada antes da aprovacao.
+PR_TITLE="chore: update github actions versions"
+if [ "${SKIP_CI:-true}" != "false" ]; then
+    PR_TITLE="$PR_TITLE [skip ci]"
+fi
+
 git checkout -B "$BRANCH_NAME"
 git add .github/workflows/
-git commit -m "chore: update github actions versions [skip ci]"
+git commit -m "$PR_TITLE"
 git push origin "$BRANCH_NAME" --force
 
 # Busca membros do time para atribuição. O `if` é essencial: com `gh api ... | paste`
@@ -166,7 +173,7 @@ if MEMBERS=$(gh api "orgs/$ORG/teams/$TEAM_NAME/members" -q '.[].login' 2>/dev/n
 fi
 
 PR_ARGS=(
-    --title "chore: update github actions versions [skip ci]"
+    --title "$PR_TITLE"
     --body "Automated update of GitHub Actions versions found in .github/workflows/"
     --base "$BASE_BRANCH"
     --head "$BRANCH_NAME"
