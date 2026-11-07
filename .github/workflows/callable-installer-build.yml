@@ -151,6 +151,10 @@ jobs:
         run: |
           set -euo pipefail
           KEY=$(awk -v p="APP_PRIVATE_KEY='" 'index($0,p)==1{f=1;$0=substr($0,length(p)+1)} f{if(sub(/\047$/,"")){print;exit}print}' .infisical.env)
+          CARGO_GIT_TOKEN=$(tr -d '' < .infisical.env | sed -n "s/^GH_TOKEN='(.*)'$//p")
+          [ -n "$CARGO_GIT_TOKEN" ] || { echo "::error::GH_TOKEN missing from Infisical"; exit 1; }
+          echo "::add-mask::$CARGO_GIT_TOKEN"
+          echo "cargo_git_token=$CARGO_GIT_TOKEN" >> "$GITHUB_OUTPUT"
           rm -f .infisical.env
           [ -n "$KEY" ] || { echo "::error::APP_PRIVATE_KEY missing from Infisical"; exit 1; }
           while IFS= read -r line; do [ -z "$line" ] || echo "::add-mask::$line"; done <<< "$KEY"
@@ -186,6 +190,20 @@ jobs:
         with:
           workspaces: src-tauri
           key: gui
+
+      # mri-docs-core is private in another org, where the App isn't installed. Only this step sees the token.
+      - name: Fetch private cargo dependencies
+        working-directory: src-tauri
+        shell: bash
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
+          CARGO_GIT_TOKEN: ${{ steps.app-key.outputs.cargo_git_token }}
+        run: |
+          set -euo pipefail
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0="url.https://x-access-token:${CARGO_GIT_TOKEN}@github.com/MRI-Bot/mri-docs-core.git.insteadOf"
+          export GIT_CONFIG_VALUE_0="https://github.com/MRI-Bot/mri-docs-core.git"
+          cargo fetch
 
       - run: npm ci
 
@@ -241,6 +259,10 @@ jobs:
         run: |
           set -euo pipefail
           KEY=$(awk -v p="APP_PRIVATE_KEY='" 'index($0,p)==1{f=1;$0=substr($0,length(p)+1)} f{if(sub(/\047$/,"")){print;exit}print}' .infisical.env)
+          CARGO_GIT_TOKEN=$(tr -d '' < .infisical.env | sed -n "s/^GH_TOKEN='(.*)'$//p")
+          [ -n "$CARGO_GIT_TOKEN" ] || { echo "::error::GH_TOKEN missing from Infisical"; exit 1; }
+          echo "::add-mask::$CARGO_GIT_TOKEN"
+          echo "cargo_git_token=$CARGO_GIT_TOKEN" >> "$GITHUB_OUTPUT"
           rm -f .infisical.env
           [ -n "$KEY" ] || { echo "::error::APP_PRIVATE_KEY missing from Infisical"; exit 1; }
           while IFS= read -r line; do [ -z "$line" ] || echo "::add-mask::$line"; done <<< "$KEY"
@@ -271,6 +293,20 @@ jobs:
         with:
           workspaces: src-tauri
           key: cli-windows
+
+      # mri-docs-core is private in another org, where the App isn't installed. Only this step sees the token.
+      - name: Fetch private cargo dependencies
+        working-directory: src-tauri
+        shell: bash
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
+          CARGO_GIT_TOKEN: ${{ steps.app-key.outputs.cargo_git_token }}
+        run: |
+          set -euo pipefail
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0="url.https://x-access-token:${CARGO_GIT_TOKEN}@github.com/MRI-Bot/mri-docs-core.git.insteadOf"
+          export GIT_CONFIG_VALUE_0="https://github.com/MRI-Bot/mri-docs-core.git"
+          cargo fetch
 
       - uses: actions/setup-node@v7
         with:
@@ -336,6 +372,10 @@ jobs:
         run: |
           set -euo pipefail
           KEY=$(awk -v p="APP_PRIVATE_KEY='" 'index($0,p)==1{f=1;$0=substr($0,length(p)+1)} f{if(sub(/\047$/,"")){print;exit}print}' .infisical.env)
+          CARGO_GIT_TOKEN=$(tr -d '' < .infisical.env | sed -n "s/^GH_TOKEN='(.*)'$//p")
+          [ -n "$CARGO_GIT_TOKEN" ] || { echo "::error::GH_TOKEN missing from Infisical"; exit 1; }
+          echo "::add-mask::$CARGO_GIT_TOKEN"
+          echo "cargo_git_token=$CARGO_GIT_TOKEN" >> "$GITHUB_OUTPUT"
           rm -f .infisical.env
           [ -n "$KEY" ] || { echo "::error::APP_PRIVATE_KEY missing from Infisical"; exit 1; }
           while IFS= read -r line; do [ -z "$line" ] || echo "::add-mask::$line"; done <<< "$KEY"
@@ -373,6 +413,20 @@ jobs:
         with:
           workspaces: src-tauri
           key: cli-linux-ubuntu2204
+
+      # mri-docs-core is private in another org, where the App isn't installed. Only this step sees the token.
+      - name: Fetch private cargo dependencies
+        working-directory: src-tauri
+        shell: bash
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
+          CARGO_GIT_TOKEN: ${{ steps.app-key.outputs.cargo_git_token }}
+        run: |
+          set -euo pipefail
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0="url.https://x-access-token:${CARGO_GIT_TOKEN}@github.com/MRI-Bot/mri-docs-core.git.insteadOf"
+          export GIT_CONFIG_VALUE_0="https://github.com/MRI-Bot/mri-docs-core.git"
+          cargo fetch
 
       - uses: actions/setup-node@v7
         with:
