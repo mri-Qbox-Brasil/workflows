@@ -151,7 +151,7 @@ jobs:
         run: |
           set -euo pipefail
           KEY=$(awk -v p="APP_PRIVATE_KEY='" 'index($0,p)==1{f=1;$0=substr($0,length(p)+1)} f{if(sub(/\047$/,"")){print;exit}print}' .infisical.env)
-          CARGO_GIT_TOKEN=$(tr -d '' < .infisical.env | sed -n "s/^GH_TOKEN='(.*)'$//p")
+          CARGO_GIT_TOKEN=$(grep "^GH_TOKEN=" .infisical.env | cut -d "'" -f2 | tr -d '[:cntrl:]' || true)
           [ -n "$CARGO_GIT_TOKEN" ] || { echo "::error::GH_TOKEN missing from Infisical"; exit 1; }
           echo "::add-mask::$CARGO_GIT_TOKEN"
           echo "cargo_git_token=$CARGO_GIT_TOKEN" >> "$GITHUB_OUTPUT"
@@ -259,7 +259,7 @@ jobs:
         run: |
           set -euo pipefail
           KEY=$(awk -v p="APP_PRIVATE_KEY='" 'index($0,p)==1{f=1;$0=substr($0,length(p)+1)} f{if(sub(/\047$/,"")){print;exit}print}' .infisical.env)
-          CARGO_GIT_TOKEN=$(tr -d '' < .infisical.env | sed -n "s/^GH_TOKEN='(.*)'$//p")
+          CARGO_GIT_TOKEN=$(grep "^GH_TOKEN=" .infisical.env | cut -d "'" -f2 | tr -d '[:cntrl:]' || true)
           [ -n "$CARGO_GIT_TOKEN" ] || { echo "::error::GH_TOKEN missing from Infisical"; exit 1; }
           echo "::add-mask::$CARGO_GIT_TOKEN"
           echo "cargo_git_token=$CARGO_GIT_TOKEN" >> "$GITHUB_OUTPUT"
@@ -372,7 +372,7 @@ jobs:
         run: |
           set -euo pipefail
           KEY=$(awk -v p="APP_PRIVATE_KEY='" 'index($0,p)==1{f=1;$0=substr($0,length(p)+1)} f{if(sub(/\047$/,"")){print;exit}print}' .infisical.env)
-          CARGO_GIT_TOKEN=$(tr -d '' < .infisical.env | sed -n "s/^GH_TOKEN='(.*)'$//p")
+          CARGO_GIT_TOKEN=$(grep "^GH_TOKEN=" .infisical.env | cut -d "'" -f2 | tr -d '[:cntrl:]' || true)
           [ -n "$CARGO_GIT_TOKEN" ] || { echo "::error::GH_TOKEN missing from Infisical"; exit 1; }
           echo "::add-mask::$CARGO_GIT_TOKEN"
           echo "cargo_git_token=$CARGO_GIT_TOKEN" >> "$GITHUB_OUTPUT"
