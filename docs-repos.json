@@ -242,10 +242,6 @@
     "name": "MRI Qrobnpcs"
   },
   {
-    "repo": "mri_Qsafezones",
-    "name": "MRI Qsafezones"
-  },
-  {
     "repo": "mri_Qspawn-source",
     "name": "MRI Qspawn",
     "slug": "mri_Qspawn"
