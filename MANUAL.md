@@ -47,11 +47,11 @@ Release no modelo **fonte privada → espelho público built-only**. Roda no rep
 **Requisitos no repo de fonte:** `fxmanifest.lua` com uma linha `version` (`'__VERSION__'` ou versão concreta — o release a mantém na última versão lançada); front em `web-path` com script `build` (saída em `web/build` ou output separado como `html/`); commits em Conventional Commits.
 
 ### `callable-recipe-release.yml`
-Release para repos de **receita** do txAdmin (ex.: `mriTxRecipe`). Sem build de resource: roda semantic-release e, quando publica versão, empacota os arquivos de `.release-files.json` num zip e sobe para o S3/R2.
+Release para repos de **receita** do txAdmin (ex.: `mriTxRecipe`). Sem build de resource: roda semantic-release e, quando publica versão, empacota os arquivos de `.release-files.json` num zip e sobe para o S3/R2. A cada push na `main` (com ou sem versão nova) avisa o `mriqbox-site` (`recipe-updated`), que regera a documentação de resources a partir das receitas.
 
 **Inputs:** `node-version`, `release-files` (default: `.release-files.json`), `zip-name`, `recipes-dir`, `recipes-manifest`, `legacy-recipe`
 **Secrets:** `GH_TOKEN`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET` (todos com fallback do Infisical); `AWS_S3_ENDPOINT`, `AWS_S3_PATH` (opcionais, p/ R2)
-**Chaves:** `CI_RELEASE` (job), `CI_SECRETS_INFISICAL`, `CI_RECIPE_UPLOAD`, `CI_RECIPE_SYNC`, `CI_RECIPE_MANIFEST`
+**Chaves:** `CI_RELEASE` (job), `CI_SECRETS_INFISICAL`, `CI_RECIPE_UPLOAD`, `CI_RECIPE_SYNC`, `CI_RECIPE_MANIFEST`, `CI_DOCS_NOTIFY`
 
 ### `callable-release-notify.yml`
 Posta o embed da release no Discord, com o changelog reescrito por IA (ver "Resumo por IA" no README). É chamado por um wrapper fino que o `mirror-release` injeta no espelho público a cada release — o espelho é quem enxerga a release publicada e quem pode usar secrets de org no plano Free.
@@ -124,7 +124,7 @@ antes de reescrever, confere que a tag flutuante de major realmente existe no
 repositório da action.
 
 ### `callable-repo-dispatch.yml`
-Envia evento `update-manual` para o repo de documentação quando `MANUAL.md` é atualizado.
+Envia evento `update-manual` para o repo de documentação quando `MANUAL.md` é atualizado. O site atualiza só a página daquele repo, e só publica se ele estiver ativo numa receita do `mriTxRecipe` (base, ou beta com "(beta)") e tiver `MANUAL.md`: a receita é a fonte única, não existe mais catálogo à mão. Nome e slug da página vêm do repo da receita; `friendly-name` e `publish-as` seguem no payload, mas o site os ignora.
 
 **Inputs:** `friendly-name` (vazio ⇒ nome do repo sem `-source`), `publish-as` (slug de publicação; vazio ⇒ nome do repo sem `-source`, então um repo `-source` já publica com o nome do público), `doc-file` (default: `MANUAL.md`), `docs-repository` (default: `mri-Qbox-Brasil/mriqbox-site`)
 **Secrets:** `GH_TOKEN` (fallback do Infisical)

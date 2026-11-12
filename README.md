@@ -82,7 +82,7 @@ variables → **Actions** → aba **Variables**).
 | `CI_PORT_PR_CLOSE_PUBLIC` | fechar/comentar o PR público após portar (o porte continua) | `port-pr` |
 | `CI_TEMPLATE_SYNC` | o sync com o `script-template` | `template-sync` |
 | `CI_UPDATE_ACTIONS` | a atualização automática das versões das actions | `update-actions` |
-| `CI_DOCS_NOTIFY` | o aviso ao repo de documentação | `repo-dispatch` |
+| `CI_DOCS_NOTIFY` | o aviso ao repo de documentação | `repo-dispatch`, `recipe-release` |
 
 As chaves **somam-se** aos inputs existentes (`web-lint`, `lua-tests`,
 `close-public-pr`, …): o input é o padrão que vem do template, a chave é o
