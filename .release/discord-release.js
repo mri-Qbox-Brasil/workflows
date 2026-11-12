@@ -46,6 +46,40 @@ if (!webhook) { console.log('[discord] sem DISCORD_RELEASE_WEBHOOK, pulando.'); 
 if (!repo || !version) { console.log('[discord] repo/versão ausentes, pulando.'); process.exit(0) }
 
 const name = repo.split('/')[1]
+
+// Denylist: repos que nunca avisam no Discord. Mora em .release/notify-denylist.txt
+// deste repo e é lida pela `main` a cada aviso, então editar a lista vale na hora
+// para todos, sem publicar pacote. A cópia que vai junto no pacote só é usada se
+// o raw não responder; no espelho o script roda sozinho e não tem essa cópia.
+const DENYLIST_URL =
+    'https://raw.githubusercontent.com/mri-Qbox-Brasil/workflows/main/.release/notify-denylist.txt'
+
+function parseDenylist(text) {
+    return text
+        .split(/\r?\n/)
+        .map((l) => l.replace(/#.*/, '').trim().toLowerCase())
+        .filter(Boolean)
+}
+
+// Devolve a lista, ou null se nenhuma fonte respondeu.
+async function loadDenylist() {
+    try {
+        const res = await fetch(DENYLIST_URL, { signal: AbortSignal.timeout(15000) })
+        if (res.ok) return parseDenylist(await res.text())
+        console.error(`[discord] denylist: raw respondeu ${res.status}.`)
+    } catch (e) { console.error('[discord] denylist: raw falhou:', e.message) }
+    try {
+        const local = require('path').join(__dirname, 'notify-denylist.txt')
+        return parseDenylist(require('fs').readFileSync(local, 'utf8'))
+    } catch { return null }
+}
+
+// Aceita `dono/repo` ou só `repo` (vale em qualquer dono).
+const isDenied = (list, fullName) => {
+    const full = fullName.toLowerCase()
+    const short = full.split('/')[1]
+    return list.some((e) => (e.includes('/') ? e === full : e === short))
+}
 const tag = `v${version}`
 const releaseUrl = `https://github.com/${repo}/releases/tag/${tag}`
 const FIELD_MAX = 1000 // limite de field do embed é 1024; folga de segurança.
@@ -178,16 +212,31 @@ async function aiSummary(rawNotes) {
 }
 
 ;(async () => {
+    // Filtros antes de qualquer dado sair do GitHub (Discord ou provedor de IA).
+    // Na dúvida não avisa: perder um aviso é melhor que anunciar repo privado
+    // (link 404 pra todo mundo) ou mandar changelog privado pra fora.
+    let info
+    try { info = await ghJson(`/repos/${repo}`) } catch (e) {
+        console.log(`[discord] não consegui ver se ${repo} é público (${e.message}), pulando.`)
+        return
+    }
+    if (info.private || (info.visibility && info.visibility !== 'public')) {
+        console.log(`[discord] ${repo} não é público, pulando.`)
+        return
+    }
+    const denylist = await loadDenylist()
+    if (!denylist) { console.log('[discord] não consegui ler a denylist, pulando.'); return }
+    if (isDenied(denylist, info.full_name || repo)) {
+        console.log(`[discord] ${repo} está na denylist, pulando.`)
+        return
+    }
+
+    const description = info.description || ''
     let rawNotes = ''
-    let description = ''
     try {
         const rel = await ghJson(`/repos/${repo}/releases/tags/${tag}`)
         rawNotes = rel.body || ''
     } catch (e) { console.error('[discord] não obteve notas da release:', e.message) }
-    try {
-        const info = await ghJson(`/repos/${repo}`)
-        description = info.description || ''
-    } catch (e) { console.error('[discord] não obteve descrição do repo:', e.message) }
 
     const whatsNew = await aiSummary(rawNotes)
 

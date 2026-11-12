@@ -1,0 +1,6 @@
+# Repos que nunca avisam release no Discord, mesmo sendo públicos.
+# Um por linha: `dono/repo` ou só `repo` (vale em qualquer dono). Sem diferença
+# de maiúscula. `#` comenta. O notificador lê este arquivo da `main` a cada aviso:
+# editar aqui vale na hora, sem publicar pacote.
+#
+# Repo privado já não avisa (o notificador checa a visibilidade do repo de saída).

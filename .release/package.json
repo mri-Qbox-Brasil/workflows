@@ -14,6 +14,7 @@
         "templates/",
         "set-version.js",
         "discord-release.js",
+        "notify-denylist.txt",
         "build.sh",
         "update-actions.sh",
         "release.config.callable.cjs"

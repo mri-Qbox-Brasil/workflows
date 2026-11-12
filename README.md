@@ -144,6 +144,17 @@ receita. Se a API não responder, também não avisa: perder um aviso é melhor 
 A release sai igual nos dois casos. Para anunciar depois, ao entrar no catálogo, rode à mão, sem passar pelo filtro:
 `gh workflow run release-notify.yml --repo <espelho> -f version=v<versão>`. O `callable-release` (repo único) não tem esse filtro.
 
+### Filtros do próprio notificador (todos os caminhos)
+
+O `discord-release.js` checa duas coisas antes de qualquer dado sair do GitHub (Discord ou provedor de IA),
+seja no `release`, no `mirror-release` ou no `release-notify` rodado à mão:
+
+- **Repo de saída público:** repo privado não avisa. No espelho, quem conta é o repo público, não o `-source`.
+- **Denylist:** [`.release/notify-denylist.txt`](.release/notify-denylist.txt), uma linha por repo (`dono/repo` ou só `repo`).
+  O notificador lê o arquivo da `main` a cada aviso, então editar a lista vale na hora, sem publicar pacote.
+
+Se não der para ver a visibilidade ou ler a denylist, não avisa. A release sai igual.
+
 ## Resumo por IA na notificação de release
 
 O notificador do Discord reescreve o changelog técnico como um resumo curto em
