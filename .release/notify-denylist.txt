@@ -4,4 +4,3 @@
 # editar aqui vale na hora, sem publicar pacote.
 #
 # Repo privado já não avisa (o notificador checa a visibilidade do repo de saída).
-mri-Qbox-Brasil/mri_Qgarage
