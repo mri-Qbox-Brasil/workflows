@@ -3,4 +3,4 @@
 # de maiúscula. `#` comenta. O notificador lê este arquivo da `main` a cada aviso:
 # editar aqui vale na hora, sem publicar pacote.
 #
-# Repo privado já não avisa (o notificador checa a visibilidade do repo de saída).
+# Repo privado avisa sem link pro GitHub (o notificador checa a visibilidade do repo de saída).

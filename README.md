@@ -149,11 +149,11 @@ A release sai igual nos dois casos. Para anunciar depois, ao entrar no catálogo
 O `discord-release.js` checa duas coisas antes de qualquer dado sair do GitHub (Discord ou provedor de IA),
 seja no `release`, no `mirror-release` ou no `release-notify` rodado à mão:
 
-- **Repo de saída público:** repo privado não avisa. No espelho, quem conta é o repo público, não o `-source`.
+- **Repo privado sem link:** repo privado avisa, mas sem link pro GitHub (título, "Veja todas as mudanças" e links das notas), que daria 404 pra quem não tem acesso. No espelho, quem conta é o espelho, não o `-source`. Sem resposta da API, sai sem link.
 - **Denylist:** [`.release/notify-denylist.txt`](.release/notify-denylist.txt), uma linha por repo (`dono/repo` ou só `repo`).
   O notificador lê o arquivo da `main` a cada aviso, então editar a lista vale na hora, sem publicar pacote.
 
-Se não der para ver a visibilidade ou ler a denylist, não avisa. A release sai igual.
+Se não der para ler a denylist, não avisa. A release sai igual.
 
 ## Resumo por IA na notificação de release
 

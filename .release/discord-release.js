@@ -212,18 +212,12 @@ async function aiSummary(rawNotes) {
 }
 
 ;(async () => {
-    // Filtros antes de qualquer dado sair do GitHub (Discord ou provedor de IA).
-    // Na dúvida não avisa: perder um aviso é melhor que anunciar repo privado
-    // (link 404 pra todo mundo) ou mandar changelog privado pra fora.
-    let info
+    // Repo privado avisa sem link pro GitHub (quem lê cairia num 404); sem resposta da API, trata como privado.
+    let info = {}
     try { info = await ghJson(`/repos/${repo}`) } catch (e) {
-        console.log(`[discord] não consegui ver se ${repo} é público (${e.message}), pulando.`)
-        return
+        console.error(`[discord] não consegui ver se ${repo} é público (${e.message}), aviso sai sem link.`)
     }
-    if (info.private || (info.visibility && info.visibility !== 'public')) {
-        console.log(`[discord] ${repo} não é público, pulando.`)
-        return
-    }
+    const isPrivate = info.private !== false || (info.visibility && info.visibility !== 'public')
     const denylist = await loadDenylist()
     if (!denylist) { console.log('[discord] não consegui ler a denylist, pulando.'); return }
     if (isDenied(denylist, info.full_name || repo)) {
@@ -238,15 +232,19 @@ async function aiSummary(rawNotes) {
         rawNotes = rel.body || ''
     } catch (e) { console.error('[discord] não obteve notas da release:', e.message) }
 
+    // `[texto](url)` vira só `texto`, e URL solta do GitHub sai.
+    if (isPrivate) rawNotes = rawNotes.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/\s*\(?https:\/\/github\.com\/\S+/g, '')
+
     const whatsNew = await aiSummary(rawNotes)
 
     // Campos de branding entram só quando a secret correspondente existe: um
     // link vazio ou `image.url: ''` faz o Discord recusar o embed com 400.
     const fields = [{ name: 'O que há de novo?', value: whatsNew }]
-    fields.push({
-        name: 'Veja todas as mudanças',
-        value: `[Veja aqui](https://github.com/${repo}/commits/${tag})`,
-    })
+    if (!isPrivate)
+        fields.push({
+            name: 'Veja todas as mudanças',
+            value: `[Veja aqui](https://github.com/${repo}/commits/${tag})`,
+        })
     if (env('INVITE_DISCORD_URL'))
         fields.push({ name: 'Precisa de ajuda?', value: `[Participe da comunidade](${env('INVITE_DISCORD_URL')})`, inline: true })
     if (env('DOCS_MRIQBOX_URL'))
@@ -255,7 +253,7 @@ async function aiSummary(rawNotes) {
     const embed = {
         author: { name: 'MRI QBOX - Updates', ...(env('LOGO_MRIQBOX_URL') ? { icon_url: env('LOGO_MRIQBOX_URL') } : {}) },
         title: `[${name}] Nova versão disponível: ${tag}`.slice(0, 256),
-        url: releaseUrl,
+        ...(isPrivate ? {} : { url: releaseUrl }),
         description: description.slice(0, 4096),
         fields,
         color: 4243543,
